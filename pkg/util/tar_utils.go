@@ -37,29 +37,29 @@ func unpackTar(tr *tar.Reader, path string) error {
 			logrus.Error("Error getting next tar header")
 			return err
 		}
+		if strings.Contains(header.Name, ".wh.") {
+			rmPath := filepath.Join(path, header.Name)
+			// Remove the .wh file if it was extracted.
+			if _, err := os.Stat(rmPath); !os.IsNotExist(err) {
+				if err := os.Remove(rmPath); err != nil {
+					logrus.Error(err)
+				}
+			}
+
+			// Remove the whited-out path.
+			newName := strings.Replace(rmPath, ".wh.", "", 1)
+			if err = walkAndRemove(newName); err != nil {
+				logrus.Error(err)
+			}
+			continue
+		}
+
 		target := filepath.Join(path, header.Name)
-		basename := filepath.Base(target)
-		dirname := filepath.Dir(target)
-		tombstone := strings.HasPrefix(basename, ".wh.")
-		if tombstone {
-			basename = strings.TrimPrefix(basename, ".wh.")
-		}
-		// Before adding a file, check to see whether it (or its whiteout) have
-		// been seen before.
-		name := filepath.Clean(filepath.Join(".", dirname, basename))
-
-		if checkWhiteouts(name) {
-			continue
-		}
-
-		// Mark this file as handled by adding its name.
-		// A non-directory implicitly tombstones any entries with
-		// a matching (or child) name.
-		whiteouts[name] = (tombstone || (header.Typeflag != tar.TypeDir))
-		if tombstone || checkWhitelist(target) {
-			continue
-		}
 		mode := header.FileInfo().Mode()
+
+		if checkWhitelist(target) {
+			continue
+		}
 		switch header.Typeflag {
 
 		// if its a dir and it doesn't exist create it
@@ -68,7 +68,6 @@ func unpackTar(tr *tar.Reader, path string) error {
 				if err := os.MkdirAll(target, mode); err != nil {
 					return err
 				}
-			} else {
 				if err := os.Chmod(target, mode); err != nil {
 					return err
 				}
@@ -113,7 +112,7 @@ func unpackTar(tr *tar.Reader, path string) error {
 			// Explicitly delete an existing file before continuing.
 			if _, err := os.Stat(target); !os.IsNotExist(err) {
 				logrus.Debugf("Removing %s to create symlink.", target)
-				walkAndRemove(target, mode)
+				walkAndRemove(target)
 			}
 
 			err = os.Symlink(header.Linkname, target)
@@ -126,7 +125,7 @@ func unpackTar(tr *tar.Reader, path string) error {
 	return nil
 }
 
-func walkAndRemove(p string, mode os.FileMode) error {
+func walkAndRemove(p string) error {
 	filepath.Walk(p, func(path string, info os.FileInfo, err error) error {
 		if err = os.Chmod(path, 0777); err != nil {
 			logrus.Errorf("Error updating file permissions on %s before removing for symlink creation", path)
