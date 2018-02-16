@@ -24,29 +24,25 @@ import (
 	"github.com/containers/image/signature"
 	"github.com/containers/image/transports/alltransports"
 	"github.com/sirupsen/logrus"
-
 	"io/ioutil"
 	"os"
 	"sort"
 	"strings"
 )
 
-var ms image.MutableSource
+var MutableSource image.MutableSource
 
 // AppendLayersAndPushImage appends layers taken from snapshotter
 // and then pushes the image to the specified destination
-func AppendLayersAndPushImage(srcImg, dstImg string) error {
-	if err := initializeMutableSource(srcImg); err != nil {
-		return err
-	}
+func AppendLayersAndPushImage(dstImg string) error {
 	if err := appendLayers(); err != nil {
 		return err
 	}
 	return pushImage(dstImg)
 }
 
-func initializeMutableSource(img string) error {
-	ref, err := docker.ParseReference("//" + img)
+func InitializeMutableSource(srcImg string) error {
+	ref, err := docker.ParseReference("//" + srcImg)
 	if err != nil {
 		return err
 	}
@@ -54,7 +50,7 @@ func initializeMutableSource(img string) error {
 	if err != nil {
 		return err
 	}
-	ms = *m
+	MutableSource = *m
 	return nil
 }
 
@@ -81,7 +77,7 @@ func appendLayers() error {
 			return err
 		}
 		logrus.Debugf("Appending layer %s", file)
-		ms.AppendLayer(contents)
+		MutableSource.AppendLayer(contents)
 	}
 	return nil
 }
@@ -90,7 +86,7 @@ func pushImage(destImg string) error {
 	logrus.Infof("Pushing image to %s", destImg)
 	srcRef := &image.ProxyReference{
 		ImageReference: nil,
-		Src:            &ms,
+		Src:            &MutableSource,
 	}
 	destRef, err := alltransports.ParseImageName("docker://" + destImg)
 	if err != nil {

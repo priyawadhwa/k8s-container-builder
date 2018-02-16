@@ -17,22 +17,29 @@ limitations under the License.
 package commands
 
 import (
-	"github.com/GoogleCloudPlatform/k8s-container-builder/contexts/dest"
+	"fmt"
+	"github.com/GoogleCloudPlatform/k8s-container-builder/appender"
 	"github.com/docker/docker/builder/dockerfile/instructions"
+	"os"
 )
 
-type DockerCommand interface {
-	ExecuteCommand() error
+// EnvCommand struct for Docker ENV command
+type EnvCommand struct {
+	cmd *instructions.EnvCommand
 }
 
-func GetCommand(cmd instructions.Command, context dest.Context) DockerCommand {
-	switch c := cmd.(type) {
-	case *instructions.RunCommand:
-		return RunCommand{cmd: c}
-	case *instructions.CopyCommand:
-		return CopyCommand{cmd: c, context: context}
-	case *instructions.EnvCommand:
-		return EnvCommand{cmd: c}
+// ExecuteCommand sets the env variables
+func (e EnvCommand) ExecuteCommand() error {
+	fmt.Println("cmd: ENV")
+	envVars := e.cmd.Env
+	for _, pair := range envVars {
+		fmt.Printf("Setting environment variable %s:%s", pair.Key, pair.Value)
+		if err := os.Setenv(pair.Key, pair.Value); err != nil {
+			return err
+		}
+		if err := appender.MutableSource.AddEnv(pair.Key, pair.Value); err != nil {
+			return err
+		}
 	}
 	return nil
 }

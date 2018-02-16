@@ -21,3 +21,5 @@ RUN echo "baz" > /etc/foo2
 COPY ./pkg/image/ ./pkg/env/ foo/
 COPY ./pkg/*/stor*.go ./pkg/env /storage/
 COPY ./pkg/image/proxy*.go hello.go
+
+ENV hello helloooooo

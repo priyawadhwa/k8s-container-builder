@@ -52,6 +52,7 @@ func main() {
 		logrus.Fatal(err)
 	}
 	from := stages[0].BaseName
+
 	// Unpack file system to root
 	logrus.Infof("Extracting filesystem for %s...", from)
 	err = util.ExtractFileSystemFromImage(from)
@@ -72,6 +73,9 @@ func main() {
 	// Get context information
 	context := dest.GetContext(*source)
 
+	// Initialize mutable source
+	appender.InitializeMutableSource(from)
+
 	// Execute commands and take snapshots
 	for _, s := range stages {
 		for _, cmd := range s.Commands {
@@ -86,7 +90,7 @@ func main() {
 	}
 
 	// Append layers and push image
-	if err := appender.AppendLayersAndPushImage(from, *destImg); err != nil {
+	if err := appender.AppendLayersAndPushImage(*destImg); err != nil {
 		logrus.Fatal(err)
 	}
 }

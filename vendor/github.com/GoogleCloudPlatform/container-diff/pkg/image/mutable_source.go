@@ -20,13 +20,13 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
-	"io"
-	"io/ioutil"
-	"time"
-
 	"github.com/containers/image/manifest"
 	"github.com/containers/image/types"
 	digest "github.com/opencontainers/go-digest"
+	"io"
+	"io/ioutil"
+	"strings"
+	"time"
 )
 
 type MutableSource struct {
@@ -35,6 +35,23 @@ type MutableSource struct {
 	cfg         *manifest.Schema2Image
 	extraBlobs  map[string][]byte
 	extraLayers []digest.Digest
+}
+
+func (m *MutableSource) AddEnv(key, value string) error {
+	currentEnv := m.cfg.Schema2V1Image.Config.Env
+	// First split into map of key:value pairs
+	envMap := make(map[string]string)
+	for _, e := range currentEnv {
+		arr := strings.Split(e, "=")
+		envMap[arr[0]] = arr[1]
+	}
+	envMap[key] = value
+	var newEnv []string
+	for key, value := range envMap {
+		newEnv = append(newEnv, key+"="+value)
+	}
+	m.cfg.Schema2V1Image.Config.Env = newEnv
+	return nil
 }
 
 func NewMutableSource(r types.ImageReference) (*MutableSource, error) {
