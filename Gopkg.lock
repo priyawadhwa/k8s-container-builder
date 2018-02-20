@@ -2,6 +2,16 @@
 
 
 [[projects]]
+  branch = "master"
+  name = "github.com/GoogleCloudPlatform/container-diff"
+  packages = [
+    "cmd/util/output",
+    "pkg/util"
+  ]
+  revision = "6267be2c48c901780fdeab3ada003b323136c254"
+  source = "github.com/GoogleCloudPlatform/container-diff"
+
+[[projects]]
   name = "github.com/Microsoft/go-winio"
   packages = ["."]
   revision = "7da180ee92d8bd8bb8c37fc560e673e6557c392f"
@@ -15,20 +25,29 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/containerd/continuity"
+  packages = ["pathdriver"]
+  revision = "d8fb8589b0e8e85b8c8bbaa8840226d0dfeb7371"
+
+[[projects]]
   name = "github.com/containers/image"
   packages = [
     "docker",
+    "docker/daemon",
     "docker/policyconfiguration",
     "docker/reference",
+    "docker/tarfile",
     "image",
+    "internal/tmpdir",
     "manifest",
+    "pkg/compression",
     "pkg/docker/config",
     "pkg/strslice",
     "pkg/tlsclientconfig",
     "transports",
     "types"
   ]
-  revision = "701221f0891d76aeac3f25912e6bb9f84e88de1c"
+  revision = "495da41bd26c50be62fa07ae903ea2ee54c00283"
 
 [[projects]]
   branch = "master"
@@ -49,13 +68,35 @@
   revision = "6664ec703991875e14419ff4960921cce7678bab"
 
 [[projects]]
+  branch = "master"
   name = "github.com/docker/docker"
   packages = [
+    "api",
+    "api/types",
+    "api/types/blkiodev",
+    "api/types/container",
+    "api/types/events",
+    "api/types/filters",
+    "api/types/image",
+    "api/types/mount",
+    "api/types/network",
+    "api/types/registry",
+    "api/types/strslice",
+    "api/types/swarm",
+    "api/types/swarm/runtime",
+    "api/types/time",
     "api/types/versions",
-    "pkg/homedir"
+    "api/types/volume",
+    "builder/dockerfile/command",
+    "builder/dockerfile/instructions",
+    "builder/dockerfile/parser",
+    "client",
+    "pkg/homedir",
+    "pkg/idtools",
+    "pkg/mount",
+    "pkg/system"
   ]
-  revision = "092cba3727bb9b4a2f0e922cd6c0f93ea270e363"
-  version = "v1.13.1"
+  revision = "ee9abc212032353e19e5b0f5e6410ad67a0cc9b1"
 
 [[projects]]
   name = "github.com/docker/docker-credential-helpers"
@@ -69,6 +110,7 @@
 [[projects]]
   name = "github.com/docker/go-connections"
   packages = [
+    "nat",
     "sockets",
     "tlsconfig"
   ]
@@ -82,6 +124,12 @@
   revision = "399ea8c73916000c64c2c76e8da00ca82f8387ab"
 
 [[projects]]
+  name = "github.com/docker/go-units"
+  packages = ["."]
+  revision = "0dadbb0345b35ec7ef35e228dabb8de89a65bf52"
+  version = "v0.3.2"
+
+[[projects]]
   branch = "master"
   name = "github.com/docker/libtrust"
   packages = ["."]
@@ -91,6 +139,12 @@
   name = "github.com/ghodss/yaml"
   packages = ["."]
   revision = "0ca9ea5df5451ffdf184b4428c902747c2c11cd7"
+  version = "v1.0.0"
+
+[[projects]]
+  name = "github.com/gogo/protobuf"
+  packages = ["proto"]
+  revision = "1adfc126b41513cc696b209667c8656ea7aac67c"
   version = "v1.0.0"
 
 [[projects]]
@@ -213,7 +267,11 @@
 [[projects]]
   branch = "master"
   name = "golang.org/x/net"
-  packages = ["proxy"]
+  packages = [
+    "context",
+    "context/ctxhttp",
+    "proxy"
+  ]
   revision = "cbe0f9307d0156177f9dd5dc85da1a31abc5f2fb"
 
 [[projects]]
@@ -234,6 +292,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "41a330c8dd5d2b49602e5de15a47da089c0d8c0b689bd9c16e871db05bda153d"
+  inputs-digest = "a7a411772dbe86b1fabda144026cdcd520a748035bc20ca40f6f68da5e30229d"
   solver-name = "gps-cdcl"
   solver-version = 1

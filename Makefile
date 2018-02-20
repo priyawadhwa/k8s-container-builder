@@ -20,6 +20,7 @@ VERSION_BUILD ?= 0
 VERSION ?= v$(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_BUILD)
 
 GOOS ?= $(shell go env GOOS)
+REGISTRY?=gcr.io/kbuild-project
 GOARCH = amd64
 ORG := github.com/GoogleCloudPlatform
 PROJECT := k8s-container-builder
@@ -36,6 +37,14 @@ out/executor: $(GO_FILES)
 
 out/kbuild: $(GO_FILES)
 	GOOS=$* GOARCH=$(GOARCH) CGO_ENABLED=1 go build -o $@ $(KBUILD_PACKAGE)
+
+.PHONY: executor-image
+executor-image: out/executor
+	docker build -t $(REGISTRY)/executor:latest -f Dockerfile .
+
+.PHONY: push-executor-image
+push-executor-image: executor-image
+	docker push $(REGISTRY)/executor:latest
 
 .PHONY: test
 test: out/executor out/kbuild

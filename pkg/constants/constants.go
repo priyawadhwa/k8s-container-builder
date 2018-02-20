@@ -19,4 +19,12 @@ package constants
 const (
 	// DefaultLogLevel is the default log level
 	DefaultLogLevel = "info"
+
+	// RootDir is the path to the root directory
+	RootDir = "/"
 )
+
+// Whitelist is a list of the directories and files that should be ignored when extracting
+// the filesystem and snapshotting
+var Whitelist = []string{"/work-dir", "/dockerfile", "/dev", "/sys", "/proc", "/var/run/secrets",
+	"/etc/hostname", "/etc/hosts", "/etc/mtab", "/etc/resolv.conf", "/.dockerenv"}
