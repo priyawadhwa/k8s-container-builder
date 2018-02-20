@@ -17,8 +17,8 @@ limitations under the License.
 package commands
 
 import (
-	"fmt"
 	"github.com/docker/docker/builder/dockerfile/instructions"
+	"github.com/sirupsen/logrus"
 	"os/exec"
 	"strings"
 )
@@ -39,13 +39,14 @@ func (r RunCommand) ExecuteCommand() error {
 }
 
 func execute(c []string) error {
-	fmt.Println("cmd: ", c[0])
-	fmt.Println("args: ", c[1:])
+	logrus.Infof("cmd: ", c[0])
+	logrus.Infof("args: ", c[1:])
 	cmd := exec.Command(c[0], c[1:]...)
-	_, err := cmd.CombinedOutput()
+	output, err := cmd.CombinedOutput()
 	if err != nil {
+		logrus.Errorf("Error: %s", output)
 		return err
 	}
-	fmt.Printf("Output from %s %s\n", cmd.Path, cmd.Args)
+	logrus.Infof("Output from %s %s\n", cmd.Path, cmd.Args)
 	return nil
 }

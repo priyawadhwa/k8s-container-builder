@@ -1,0 +1,2 @@
+FROM gcr.io/google-appengine/debian9
+COPY pkg /foo2/

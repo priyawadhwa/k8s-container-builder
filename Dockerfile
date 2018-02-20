@@ -13,9 +13,9 @@
 # limitations under the License.
 
 # Builds the static Go image to execute in a Kubernetes job
-FROM scratch
+FROM gcr.io/distroless/base
 ADD out/executor /work-dir/executor
-ADD files/ca-certificates.crt /etc/ssl/certs/
 ADD files/policy.json /etc/containers/
-ADD files/docker-credential-gcr_linux_amd64-1.4.1.tar.gz /usr/local/bin/
+ADD https://github.com/GoogleCloudPlatform/docker-credential-gcr/releases/download/v1.4.3/docker-credential-gcr_linux_amd64-1.4.3.tar.gz /usr/local/bin/
 ADD files/config.json /root/.docker/
+COPY test/Dockerfile2 /dockerfile/Dockerfile

@@ -17,7 +17,6 @@ limitations under the License.
 package commands
 
 import (
-	"fmt"
 	pkgutil "github.com/GoogleCloudPlatform/container-diff/pkg/util"
 	"github.com/GoogleCloudPlatform/k8s-container-builder/contexts/dest"
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/util"
@@ -37,8 +36,8 @@ func (c CopyCommand) ExecuteCommand() error {
 	srcs := c.cmd.SourcesAndDest[:len(c.cmd.SourcesAndDest)-1]
 	dest := c.cmd.SourcesAndDest[len(c.cmd.SourcesAndDest)-1]
 
-	fmt.Println("cmd: copy", srcs)
-	fmt.Println("dest: ", dest)
+	logrus.Infof("cmd: copy", srcs)
+	logrus.Infof("dest: ", dest)
 
 	if containsWildcards(srcs) {
 		return c.executeWithWildcards()
@@ -115,7 +114,7 @@ func (c CopyCommand) executeWithWildcards() error {
 			totalFiles += len(srcFiles)
 		}
 		if totalFiles > 1 {
-			return errors.Errorf("When specifying multiple sources in a COPY command, destination must be a directory and end in '/'")
+			return errors.New("When specifying multiple sources in a COPY command, destination must be a directory and end in '/'")
 		}
 		for _, srcFiles := range matchedFiles {
 			for _, file := range srcFiles {

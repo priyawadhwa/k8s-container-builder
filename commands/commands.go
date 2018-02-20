@@ -19,6 +19,7 @@ package commands
 import (
 	"github.com/GoogleCloudPlatform/k8s-container-builder/contexts/dest"
 	"github.com/docker/docker/builder/dockerfile/instructions"
+	"github.com/sirupsen/logrus"
 )
 
 type DockerCommand interface {
@@ -32,5 +33,6 @@ func GetCommand(cmd instructions.Command, context dest.Context) DockerCommand {
 	case *instructions.CopyCommand:
 		return CopyCommand{cmd: c, context: context}
 	}
+	logrus.Errorf("%s is not a supported command.", cmd.Name)
 	return nil
 }
