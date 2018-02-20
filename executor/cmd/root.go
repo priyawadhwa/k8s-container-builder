@@ -18,7 +18,11 @@ package cmd
 
 import (
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/constants"
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"io/ioutil"
+	"os"
 )
 
 var (
@@ -37,6 +41,43 @@ func init() {
 
 var RootCmd = &cobra.Command{
 	Use: "executor",
-	Run: func(cmd *cobra.Command, args []string) {
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		return setLogLevel()
 	},
+	Run: func(cmd *cobra.Command, args []string) {
+		if err := execute(); err != nil {
+			logrus.Error(err)
+			os.Exit(1)
+		}
+	},
+}
+
+func execute() error {
+	// Parse dockerfile and unpack base image to root
+	b, err := ioutil.ReadFile(dockerfile)
+	if err != nil {
+		panic(err)
+	}
+
+	stages, err := dockerfile.Parse(b)
+	if err != nil {
+		panic(err)
+	}
+	from := stages[0].BaseName
+	// Unpack file system to root
+	logrus.Infof("Unpacking filesystem for %s...", from)
+	err = util.GetFileSystemFromImage(from)
+	if err != nil {
+		panic(err)
+	}
+	return nil
+}
+
+func setLogLevel() error {
+	lvl, err := logrus.ParseLevel(logLevel)
+	if err != nil {
+		return errors.Wrap(err, "parsing log level")
+	}
+	logrus.SetLevel(lvl)
+	return nil
 }
