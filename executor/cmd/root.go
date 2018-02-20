@@ -18,7 +18,7 @@ package cmd
 
 import (
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/constants"
-	"github.com/pkg/errors"
+	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/util"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"io/ioutil"
@@ -26,14 +26,14 @@ import (
 )
 
 var (
-	dockerfile string
-	name       string
-	srcContext string
-	logLevel   string
+	dockerfilePath string
+	name           string
+	srcContext     string
+	logLevel       string
 )
 
 func init() {
-	RootCmd.PersistentFlags().StringVarP(&dockerfile, "dockerfile", "d", "/dockerfile/Dockerfile", "Path to the dockerfile to be built.")
+	RootCmd.PersistentFlags().StringVarP(&dockerfilePath, "dockerfile", "d", "/dockerfile/Dockerfile", "Path to the dockerfile to be built.")
 	RootCmd.PersistentFlags().StringVarP(&srcContext, "context", "c", "", "Path to the dockerfile build context.")
 	RootCmd.PersistentFlags().StringVarP(&name, "name", "n", "", "Registry the final image should be pushed to (ex: gcr.io/test/example:latest)")
 	RootCmd.PersistentFlags().StringVarP(&logLevel, "verbosity", "v", constants.DefaultLogLevel, "Log level (debug, info, warn, error, fatal, panic")
@@ -42,7 +42,7 @@ func init() {
 var RootCmd = &cobra.Command{
 	Use: "executor",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		return setLogLevel()
+		return util.SetLogLevel(logLevel)
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := execute(); err != nil {
@@ -54,7 +54,7 @@ var RootCmd = &cobra.Command{
 
 func execute() error {
 	// Parse dockerfile and unpack base image to root
-	b, err := ioutil.ReadFile(dockerfile)
+	b, err := ioutil.ReadFile(dockerfilePath)
 	if err != nil {
 		panic(err)
 	}
@@ -70,14 +70,5 @@ func execute() error {
 	if err != nil {
 		panic(err)
 	}
-	return nil
-}
-
-func setLogLevel() error {
-	lvl, err := logrus.ParseLevel(logLevel)
-	if err != nil {
-		return errors.Wrap(err, "parsing log level")
-	}
-	logrus.SetLevel(lvl)
 	return nil
 }
