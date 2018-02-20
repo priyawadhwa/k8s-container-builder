@@ -18,6 +18,7 @@ package cmd
 
 import (
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/constants"
+	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/dockerfile"
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/util"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -54,21 +55,22 @@ var RootCmd = &cobra.Command{
 
 func execute() error {
 	// Parse dockerfile and unpack base image to root
-	b, err := ioutil.ReadFile(dockerfilePath)
+	d, err := ioutil.ReadFile(dockerfilePath)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
-	stages, err := dockerfile.Parse(b)
+	stages, err := dockerfile.Parse(d)
 	if err != nil {
-		panic(err)
+		return err
 	}
-	from := stages[0].BaseName
+	baseImage := stages[0].BaseName
+
 	// Unpack file system to root
-	logrus.Infof("Unpacking filesystem for %s...", from)
-	err = util.GetFileSystemFromImage(from)
+	logrus.Infof("Unpacking filesystem of %s...", baseImage)
+	err = util.ExtractFileSystemFromImage(baseImage)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	return nil
 }
