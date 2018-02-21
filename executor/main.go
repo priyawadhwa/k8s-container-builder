@@ -83,7 +83,15 @@ func main() {
 			if err := dockerCommand.ExecuteCommand(); err != nil {
 				logrus.Fatal(err)
 			}
-			if err := snapshotter.TakeSnapshot(); err != nil {
+			contents, err := snapshotter.TakeSnapshot()
+			if err != nil {
+				logrus.Fatal(err)
+			}
+			if contents == nil {
+				continue
+			}
+			logrus.Info("Appending to source image")
+			if err := image.SourceImage.AppendLayer(contents); err != nil {
 				logrus.Fatal(err)
 			}
 		}

@@ -51,26 +51,30 @@ func (s *Snapshotter) Init() error {
 
 // TakeSnapshot takes a snapshot of the filesystem, avoiding directories in the whitelist, and creates
 // a tarball of the changed files
-func (s *Snapshotter) TakeSnapshot() error {
+func (s *Snapshotter) TakeSnapshot() ([]byte, error) {
 	fmt.Println("taking snapshots in ", s.directory)
 	path := filepath.Join(s.directory+constants.WorkDir, fmt.Sprintf("layer-%d.tar", len(s.snapshots)))
 	fmt.Println("Generating a snapshot in: ", path)
 	f, err := os.Create(path)
 	defer f.Close()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	added, err := s.snapShotFS(f)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if !added {
 		logrus.Infof("No files were changed in this command, this layer will not be appended.")
-		return os.Remove(path)
+		return nil, os.Remove(path)
 	}
 	s.snapshots = append(s.snapshots, path)
-	return nil
+	contents, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	return contents, nil
 }
 
 func (s *Snapshotter) snapShotFS(f io.Writer) (bool, error) {

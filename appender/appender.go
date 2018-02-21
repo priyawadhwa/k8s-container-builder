@@ -34,9 +34,6 @@ import (
 // AppendLayersAndPushImage appends layers taken from snapshotter
 // and then pushes the image to the specified destination
 func AppendLayersAndPushImage(srcImg, dstImg string) error {
-	if err := appendLayers(); err != nil {
-		return err
-	}
 	return pushImage(dstImg)
 }
 
