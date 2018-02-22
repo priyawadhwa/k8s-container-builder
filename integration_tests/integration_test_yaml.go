@@ -31,7 +31,7 @@ var tests = []struct {
 	{
 		description:    "test extract filesystem",
 		dockerfilePath: "dockerfiles/Dockerfile",
-		context:        "dockerfiles/",
+		context:        "integration_tests/dockerfiles/",
 		repo:           "extract-filesystem",
 	},
 }
@@ -46,7 +46,7 @@ type testyaml struct {
 	Steps []step
 }
 
-var executorImage = "gcr.io/kbuild-project/executor:latest"
+var executorImage = "executor-image"
 var executorCommand = "/work-dir/executor"
 var dockerImage = "gcr.io/cloud-builders/docker"
 var testRepo = "gcr.io/kbuild-test/"
@@ -66,8 +66,8 @@ func main() {
 	}
 	// Build executor image
 	buildExecutorImage := step{
-		Name: "ubuntu",
-		Args: []string{"make", "executor-image"},
+		Name: dockerImage,
+		Args: []string{"build", "-t", "executor-image", "."},
 	}
 
 	y := testyaml{
@@ -75,14 +75,14 @@ func main() {
 	}
 	for _, test := range tests {
 		// First, build the image with docker
+		var dockerfilePath = filepath.Join("/workspace/integration_tests", test.dockerfilePath)
 		dockerBuild := step{
 			Name: dockerImage,
-			Args: []string{"build", "-t", testRepo + dockerPrefix + test.repo, "-f", test.dockerfilePath, test.context},
+			Args: []string{"build", "-t", testRepo + dockerPrefix + test.repo, "-f", dockerfilePath, test.context},
 		}
 
 		// Then, buld the image with kbuild and commit it
 		var commitID = "test"
-		var dockerfilePath = filepath.Join("/workspace/", test.dockerfilePath)
 		kbuild := step{
 			Name: dockerImage,
 			Args: []string{"run", "-v", dockerfilePath + ":/dockerfile/Dockerfile", "--name", commitID, executorImage, executorCommand},
@@ -97,7 +97,7 @@ func main() {
 
 	integrationTests := step{
 		Name: "gcr.io/cloud-builders/go:debian",
-		Args: []string{"test", "integration_test.go"},
+		Args: []string{"test", "integration_tests/integration_test.go"},
 		Env:  []string{"GOPATH=/", "PATH=/builder/bin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/workspace"},
 	}
 	y.Steps = append(y.Steps, integrationTests)
