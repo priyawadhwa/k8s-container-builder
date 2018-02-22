@@ -18,7 +18,7 @@ package snapshot
 
 import (
 	"archive/tar"
-	"fmt"
+	"bytes"
 	pkgutil "github.com/GoogleCloudPlatform/container-diff/pkg/util"
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/constants"
 	"github.com/sirupsen/logrus"
@@ -52,27 +52,28 @@ func (s *Snapshotter) Init() error {
 // TakeSnapshot takes a snapshot of the filesystem, avoiding directories in the whitelist, and creates
 // a tarball of the changed files
 func (s *Snapshotter) TakeSnapshot() ([]byte, error) {
-	fmt.Println("taking snapshots in ", s.directory)
-	path := filepath.Join(s.directory+constants.WorkDir, fmt.Sprintf("layer-%d.tar", len(s.snapshots)))
-	fmt.Println("Generating a snapshot in: ", path)
-	f, err := os.Create(path)
-	defer f.Close()
-	if err != nil {
-		return nil, err
-	}
 
-	added, err := s.snapShotFS(f)
+	buf := bytes.NewBuffer([]byte{})
+	added, err := s.snapShotFS(buf)
 	if err != nil {
 		return nil, err
 	}
 	if !added {
 		logrus.Infof("No files were changed in this command, this layer will not be appended.")
-		return nil, os.Remove(path)
+		return nil, nil
 	}
-	s.snapshots = append(s.snapshots, path)
-	contents, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, err
+	}
+	var contents []byte
+	for {
+		logrus.Info("Getting next buf")
+		next := buf.Next(buf.Len())
+		logrus.Info(len(next))
+		if len(next) == 0 {
+			break
+		}
+		contents = append(contents, next...)
 	}
 	return contents, nil
 }
