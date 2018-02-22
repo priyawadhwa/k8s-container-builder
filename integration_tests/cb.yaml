@@ -1,0 +1,24 @@
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args: ["build", "-t", "gcr.io/kbuild-test/docker-extract-filesystem", "-f", "dockerfiles/Dockerfile", "dockerfiles/"]
+- name: 'gcr.io/cloud-builders/docker'
+  args: ["push", "gcr.io/kbuild-test/docker-extract-filesystem"]
+- name: 'gcr.io/cloud-builders/docker'
+  args: ["pull", "gcr.io/kbuild-project/executor:latest"]
+- name: 'gcr.io/cloud-builders/docker'
+  args: ["run", "-v", "/workspace/dockerfiles/Dockerfile:/dockerfile/Dockerfile", "--name", "test", "gcr.io/kbuild-project/executor:latest", "/work-dir/executor"]
+- name: 'gcr.io/cloud-builders/docker'
+  args: ["commit", "test", "gcr.io/kbuild-test/kbuild-extract-filesystem"]
+- name: 'gcr.io/cloud-builders/docker'
+  args: ["push", "gcr.io/kbuild-test/kbuild-extract-filesystem"]
+
+# Get container-diff
+- name: 'gcr.io/cloud-builders/gsutil'
+  args: ["cp", "gs://container-diff/latest/container-diff-linux-amd64", "."]
+- name: 'ubuntu'
+  args: ["chmod", "+x", "container-diff-linux-amd64"]
+# Run container-diff
+- name: 'ubuntu'
+  args: ["./container-diff-linux-amd64", "diff", "daemon://gcr.io/kbuild-test/docker-extract-filesystem", "daemon://gcr.io/kbuild-test/kbuild-extract-filesystem", "-j", "--type=file"]
+- name: 'ubuntu'
+  args: ["cat", "extract_output"]
