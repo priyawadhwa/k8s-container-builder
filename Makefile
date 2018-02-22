@@ -52,3 +52,7 @@ push-executor-image: executor-image
 .PHONY: test
 test: out/executor out/kbuild
 	@ ./test.sh
+
+.PHONY: integration-test
+integration-test: out/executor out/kbuild
+	@ ./integration-test.sh

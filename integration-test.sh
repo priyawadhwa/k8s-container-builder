@@ -1,4 +1,4 @@
-# Copyright 2018 Google, Inc. All rights reserved.
+# Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,4 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM gcr.io/google-appengine/debian9:latest
+#!/bin/bash
+set -e
+
+echo "Running integration tests..."
+go run integration_tests/integration_test_yaml.go | gcloud container builds submit --config /dev/fd/0 .
