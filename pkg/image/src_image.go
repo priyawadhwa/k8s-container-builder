@@ -19,10 +19,15 @@ package image
 import (
 	img "github.com/GoogleCloudPlatform/container-diff/pkg/image"
 	"github.com/containers/image/docker"
+	"github.com/sirupsen/logrus"
+
+	"github.com/containers/image/copy"
+	"github.com/containers/image/signature"
+	"github.com/containers/image/transports/alltransports"
 )
 
 // SourceImage is the image that will be modified by the executor
-var SourceImage img.MutableSource
+var sourceImage img.MutableSource
 
 // InitializeSourceImage initializes the source image with the base image
 func InitializeSourceImage(srcImg string) error {
@@ -34,6 +39,44 @@ func InitializeSourceImage(srcImg string) error {
 	if err != nil {
 		return err
 	}
-	SourceImage = *ms
+	sourceImage = *ms
 	return nil
+}
+
+// AppendLayer appends a layer onto the base image
+func AppendLayer(contents []byte) error {
+	return sourceImage.AppendLayer(contents)
+}
+
+// PushImage pushes the final image
+func PushImage(destImg string) error {
+	logrus.Infof("Pushing image to %s", destImg)
+	srcRef := &img.ProxyReference{
+		ImageReference: nil,
+		Src:            &sourceImage,
+	}
+	destRef, err := alltransports.ParseImageName("docker://" + destImg)
+	if err != nil {
+		return err
+	}
+	policyContext, err := getPolicyContext()
+	if err != nil {
+		return err
+	}
+	err = copy.Image(policyContext, destRef, srcRef, nil)
+	return err
+}
+
+func getPolicyContext() (*signature.PolicyContext, error) {
+	policy, err := signature.DefaultPolicy(nil)
+	if err != nil {
+		logrus.Debugf("Error retrieving policy: %s", err)
+		return nil, err
+	}
+	policyContext, err := signature.NewPolicyContext(policy)
+	if err != nil {
+		logrus.Debugf("Error retrieving policy context: %s", err)
+		return nil, err
+	}
+	return policyContext, nil
 }

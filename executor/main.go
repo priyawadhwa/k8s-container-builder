@@ -18,7 +18,6 @@ package main
 
 import (
 	"flag"
-	"github.com/GoogleCloudPlatform/k8s-container-builder/appender"
 	"github.com/GoogleCloudPlatform/k8s-container-builder/commands"
 	"github.com/GoogleCloudPlatform/k8s-container-builder/contexts/dest"
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/constants"
@@ -93,14 +92,14 @@ func main() {
 				continue
 			}
 			logrus.Info("Appending to source image")
-			if err := image.SourceImage.AppendLayer(contents); err != nil {
+			if err := image.AppendLayer(contents); err != nil {
 				logrus.Fatal(err)
 			}
 		}
 	}
 
-	// Append layers and push image
-	if err := appender.AppendLayersAndPushImage(from, *destImg); err != nil {
+	// Push the image
+	if err := image.PushImage(*destImg); err != nil {
 		logrus.Fatal(err)
 	}
 }
