@@ -32,19 +32,27 @@ type CopyCommand struct {
 	context dest.Context
 }
 
-func (c CopyCommand) ExecuteCommand() error {
+func (c *CopyCommand) ExecuteCommand() error {
 	srcs := c.cmd.SourcesAndDest[:len(c.cmd.SourcesAndDest)-1]
-	dest := c.cmd.SourcesAndDest[len(c.cmd.SourcesAndDest)-1]
+	destination := c.cmd.SourcesAndDest[len(c.cmd.SourcesAndDest)-1]
 
 	logrus.Infof("cmd: copy", srcs)
-	logrus.Infof("dest: ", dest)
+	logrus.Infof("dest: ", destination)
+
+	if c.cmd.From != "" {
+		filepath, err := util.GetImageTar(c.cmd.From)
+		if err != nil {
+			return err
+		}
+		c.context = dest.GetTarContext(filepath)
+	}
 
 	if containsWildcards(srcs) {
 		return c.executeWithWildcards()
 	}
 	// If there are multiple sources, the destination must be a directory
 	if len(srcs) > 1 {
-		if !isDir(dest) {
+		if !isDir(destination) {
 			return errors.Errorf("When specifying multiple sources in a COPY command, destination must be a directory and end in '/'")
 		}
 	}
@@ -56,16 +64,12 @@ func (c CopyCommand) ExecuteCommand() error {
 			return err
 		}
 		for file, contents := range files {
-			if !isDir(dest) {
-				logrus.Infof("Copying from %s to %s", file, dest)
-				return util.CreateFile(dest, contents)
+			if !isDir(destination) {
+				logrus.Infof("Copying from %s to %s", file, destination)
+				return util.CreateFile(destination, contents)
 			}
-			relPath, err := filepath.Rel(src, file)
-			if err != nil {
-				return err
-			}
-			destPath := filepath.Join(dest, relPath)
-			logrus.Infof("Copying from %s to %s", file, dest)
+			destPath := filepath.Join(destination, filepath.Base(file))
+			logrus.Infof("Copying from %s to %s", file, destination)
 			err = util.CreateFile(destPath, contents)
 			if err != nil {
 				return err
@@ -75,7 +79,7 @@ func (c CopyCommand) ExecuteCommand() error {
 	return nil
 }
 
-func (c CopyCommand) executeWithWildcards() error {
+func (c *CopyCommand) executeWithWildcards() error {
 	srcs := c.cmd.SourcesAndDest[:len(c.cmd.SourcesAndDest)-1]
 	dest := c.cmd.SourcesAndDest[len(c.cmd.SourcesAndDest)-1]
 
@@ -91,15 +95,11 @@ func (c CopyCommand) executeWithWildcards() error {
 	// If destination is a directory, copy all the matched files
 	// for each source into it
 	if isDir(dest) {
-		for src, srcFiles := range matchedFiles {
+		for _, srcFiles := range matchedFiles {
 			for _, file := range srcFiles {
-				// Calculate relative path between src and the file
-				relPath, err := filepath.Rel(src, file)
-				if err != nil {
-					return err
-				}
-				// Join destination and relative path to create final path for the file
-				destPath := filepath.Join(dest, relPath)
+				// Join destination and filename to create final path for the file
+
+				destPath := filepath.Join(dest, filepath.Base(file))
 				logrus.Infof("Copying %s into file %s", file, destPath)
 				err = util.CreateFile(destPath, files[file])
 				if err != nil {

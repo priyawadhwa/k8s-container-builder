@@ -68,7 +68,7 @@ func PushImage(destImg string) error {
 }
 
 func getPolicyContext() (*signature.PolicyContext, error) {
-	policy, err := signature.DefaultPolicy(nil)
+	policy, err := signature.NewPolicyFromFile("/work-dir/policy.json")
 	if err != nil {
 		logrus.Debugf("Error retrieving policy: %s", err)
 		return nil, err

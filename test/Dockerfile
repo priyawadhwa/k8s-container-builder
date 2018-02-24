@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM gcr.io/google-appengine/debian9:latest
-RUN apt-get update && apt-get install -y curl
+FROM gcr.io/google-appengine/debian9:latest as first
 RUN echo "hey" > /etc/foo
-RUN echo "baz" > /etc/foo
-RUN echo "baz" > /etc/foo2
 
-COPY ./pkg/image/ ./pkg/env/ foo/
-COPY ./pkg/*/stor*.go ./pkg/env /storage/
-COPY ./pkg/image/proxy*.go hello.go
+FROM gcr.io/distroless/base
+COPY --from=first /etc/foo /etc/foo
+COPY --from=first /root/.docker/config.json /root/.docker/config.json 

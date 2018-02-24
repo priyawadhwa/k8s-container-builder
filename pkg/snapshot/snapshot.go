@@ -85,14 +85,14 @@ func (s *Snapshotter) snapShotFS(f io.Writer) (bool, error) {
 	defer w.Close()
 
 	err := filepath.Walk(s.directory, func(path string, info os.FileInfo, err error) error {
-		if ignorePath(path, s.directory) {
+		if IgnorePath(path, s.directory) {
 			return nil
 		}
 
 		// Only add to the tar if we add it to the layeredmap.
 		if s.l.MaybeAdd(path) {
 			added = true
-			return addToTar(path, info, w)
+			return AddToTar(path, info, w)
 		}
 		return nil
 	})
@@ -101,7 +101,7 @@ func (s *Snapshotter) snapShotFS(f io.Writer) (bool, error) {
 
 // TODO: ignore anything in /proc/self/mounts
 // ignore anything in the whitelist
-func ignorePath(p, directory string) bool {
+func IgnorePath(p, directory string) bool {
 	for _, d := range constants.Whitelist {
 		dirPath := filepath.Join(directory, d)
 		if pkgutil.HasFilepathPrefix(p, dirPath) {
@@ -111,7 +111,7 @@ func ignorePath(p, directory string) bool {
 	return false
 }
 
-func addToTar(p string, i os.FileInfo, w *tar.Writer) error {
+func AddToTar(p string, i os.FileInfo, w *tar.Writer) error {
 	linkDst := ""
 	if i.Mode()&os.ModeSymlink != 0 {
 		var err error

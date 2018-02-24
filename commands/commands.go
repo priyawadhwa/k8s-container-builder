@@ -31,7 +31,7 @@ func GetCommand(cmd instructions.Command, context dest.Context) DockerCommand {
 	case *instructions.RunCommand:
 		return RunCommand{cmd: c}
 	case *instructions.CopyCommand:
-		return CopyCommand{cmd: c, context: context}
+		return &CopyCommand{cmd: c, context: context}
 	}
 	logrus.Errorf("%s is not a supported command.", cmd.Name)
 	return nil

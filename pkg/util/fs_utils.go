@@ -16,8 +16,10 @@ limitations under the License.
 package util
 
 import (
+	"archive/tar"
 	pkgutil "github.com/GoogleCloudPlatform/container-diff/pkg/util"
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/constants"
+	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/snapshot"
 	"github.com/containers/image/docker"
 	"github.com/sirupsen/logrus"
 	"os"
@@ -70,4 +72,46 @@ func ExtractFileSystemFromImage(img string) error {
 		return err
 	}
 	return pkgutil.GetFileSystemFromReference(ref, imgSrc, constants.RootDir, constants.Whitelist)
+}
+
+func GetImageTar(name string) (string, error) {
+	filepath := filepath.Join(constants.WorkDir, name+".tar")
+	_, err := os.Stat(filepath)
+	return filepath, err
+}
+
+func SaveFileSystemAsTarball(dest string) error {
+	tarPath := filepath.Join(constants.WorkDir, dest+".tar")
+	f, err := os.Create(tarPath)
+	logrus.Infof("Created tarball to save filesystem in at %s", tarPath)
+	defer f.Close()
+	if err != nil {
+		return err
+	}
+	w := tar.NewWriter(f)
+	defer w.Close()
+
+	err = filepath.Walk(constants.RootDir, func(path string, info os.FileInfo, err error) error {
+		if snapshot.IgnorePath(path, constants.RootDir) {
+			return nil
+		}
+		return snapshot.AddToTar(path, info, w)
+	})
+	return err
+}
+
+func DeleteFileSystem() error {
+	logrus.Info("Deleting filesystem...")
+	err := filepath.Walk(constants.RootDir, func(path string, info os.FileInfo, err error) error {
+		if snapshot.IgnorePath(path, constants.RootDir) || path == constants.RootDir {
+			return nil
+		}
+		logrus.Debugf("Deleting %s", path)
+		e := os.RemoveAll(path)
+		if e != nil {
+			logrus.Debugf("Couldn't remove %s: %s", path, e)
+		}
+		return nil
+	})
+	return err
 }

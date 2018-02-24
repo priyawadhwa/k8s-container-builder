@@ -29,6 +29,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"io/ioutil"
+	"os"
 )
 
 var dockerfilePath = flag.String("dockerfile", "/dockerfile/Dockerfile", "Path to Dockerfile.")
@@ -48,36 +49,36 @@ func main() {
 	}
 
 	stages, err := dockerfile.Parse(b)
-	if err != nil {
-		logrus.Fatal(err)
-	}
-	from := stages[0].BaseName
-	// Unpack file system to root
-	logrus.Infof("Extracting filesystem for %s...", from)
-	err = util.ExtractFileSystemFromImage(from)
-	if err != nil {
-		logrus.Fatal(err)
-	}
 
-	// Initialize source image
-	image.InitializeSourceImage(from)
+	for index, stage := range stages {
+		finalStage := (index + 1) == len(stages)
+		baseImage := stage.BaseName
+		if finalStage {
+			// Initialize source image
+			logrus.Info("Initializing source image")
+			if err := image.InitializeSourceImage(baseImage); err != nil {
+				logrus.Fatal(err)
+			}
+		}
+		logrus.Infof("Extracting filesystem for %s...", baseImage)
+		err = util.ExtractFileSystemFromImage(baseImage)
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		l := snapshot.NewLayeredMap(util.Hasher())
+		snapshotter := snapshot.NewSnapshotter(l, constants.RootDir)
 
-	l := snapshot.NewLayeredMap(util.Hasher())
-	snapshotter := snapshot.NewSnapshotter(l, constants.RootDir)
+		// Take initial snapshot
+		if err := snapshotter.Init(); err != nil {
+			logrus.Fatal(err)
+		}
+		// Save environment variables
+		env.SetEnvironmentVariables(baseImage)
 
-	// Take initial snapshot
-	if err := snapshotter.Init(); err != nil {
-		logrus.Fatal(err)
-	}
-	// Save environment variables
-	env.SetEnvironmentVariables(from)
+		// Get context information
+		context := dest.GetContext(*source)
 
-	// Get context information
-	context := dest.GetContext(*source)
-
-	// Execute commands and take snapshots
-	for _, s := range stages {
-		for _, cmd := range s.Commands {
+		for _, cmd := range stage.Commands {
 			dockerCommand := commands.GetCommand(cmd, context)
 			if err := dockerCommand.ExecuteCommand(); err != nil {
 				logrus.Fatal(err)
@@ -91,17 +92,31 @@ func main() {
 				logrus.Info("Contents are nil, continue.")
 				continue
 			}
-			logrus.Info("Appending to source image")
-			if err := image.AppendLayer(contents); err != nil {
-				logrus.Fatal(err)
+			if finalStage {
+				logrus.Info("Appending to source image")
+				if err := image.AppendLayer(contents); err != nil {
+					logrus.Fatal(err)
+				}
 			}
 		}
+		if finalStage {
+			continue
+		}
+		// Now package up filesystem as tarball
+		if err := util.SaveFileSystemAsTarball(stage.Name); err != nil {
+			logrus.Fatal(err)
+		}
+		// Then, delete filesystem
+		util.DeleteFileSystem()
 	}
 
 	// Push the image
+	logrus.Info("Pushing image now")
+	logrus.Info(os.Stat("/etc/ssl/certs/ca-certificates.crt"))
 	if err := image.PushImage(*destImg); err != nil {
 		logrus.Fatal(err)
 	}
+	return
 }
 
 func setLogLevel() error {

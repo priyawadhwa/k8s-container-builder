@@ -33,6 +33,6 @@ var Whitelist = []string{"/work-dir", "/dockerfile", "/dev", "/sys", "/proc", "/
 
 // DefaultEnvVariables are the default env variables set in the container
 var DefaultEnvVariables = map[string]string{
-	"PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root",
+	"PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root:/work-dir",
 	"HOME": "/root",
 }

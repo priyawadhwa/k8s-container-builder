@@ -13,17 +13,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-
 package dest
 
-type Context interface {
-	GetFilesFromSource(path string) (map[string][]byte, error)
-}
+import (
+	"testing"
+)
 
-func GetContext(source string) Context {
-	return GCSBucketContext{bucketName: source}
-}
+func TestUnpackTar(t *testing.T) {
 
-func GetTarContext(source string) TarContext {
-	return TarContext{filePath: source}
+	tar := GetTarContext("test.tar")
+	t.Fatal(tar.GetFilesFromSource(""))
 }
