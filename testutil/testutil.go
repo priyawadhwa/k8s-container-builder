@@ -17,9 +17,12 @@ limitations under the License.
 package testutil
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"reflect"
+	"testing"
 )
 
 // SetupFiles creates files at path
@@ -32,6 +35,27 @@ func SetupFiles(path string, files map[string]string) error {
 		if err := ioutil.WriteFile(path, []byte(c), 0644); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func CheckErrorAndDeepEqual(t *testing.T, shouldErr bool, err error, expected, actual interface{}) {
+	if err := checkErr(shouldErr, err); err != nil {
+		t.Error(err)
+		return
+	}
+	if !reflect.DeepEqual(expected, actual) {
+		t.Errorf("%T differ.\nExpected\n%+v\nActual\n%+v", expected, expected, actual)
+		return
+	}
+}
+
+func checkErr(shouldErr bool, err error) error {
+	if err == nil && shouldErr {
+		return fmt.Errorf("Expected error, but returned none")
+	}
+	if err != nil && !shouldErr {
+		return fmt.Errorf("Unexpected error: %s", err)
 	}
 	return nil
 }

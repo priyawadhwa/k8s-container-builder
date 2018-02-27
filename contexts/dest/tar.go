@@ -48,7 +48,6 @@ func (t TarContext) GetFilesFromSource(path string) (map[string][]byte, error) {
 		}
 		if util.HasFilepathPrefix(hdr.Name, path) || path == "" {
 			fileContents, err := ioutil.ReadAll(reader)
-			logrus.Debugf("Getting %s from tar source", hdr.Name)
 			if err != nil {
 				return nil, err
 			}

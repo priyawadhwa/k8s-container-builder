@@ -19,8 +19,7 @@ package snapshot
 import (
 	"archive/tar"
 	"bytes"
-	pkgutil "github.com/GoogleCloudPlatform/container-diff/pkg/util"
-	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/constants"
+	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/util"
 	"github.com/sirupsen/logrus"
 
 	"io"
@@ -67,9 +66,7 @@ func (s *Snapshotter) TakeSnapshot() ([]byte, error) {
 	}
 	var contents []byte
 	for {
-		logrus.Info("Getting next buf")
 		next := buf.Next(buf.Len())
-		logrus.Info(len(next))
 		if len(next) == 0 {
 			break
 		}
@@ -85,56 +82,16 @@ func (s *Snapshotter) snapShotFS(f io.Writer) (bool, error) {
 	defer w.Close()
 
 	err := filepath.Walk(s.directory, func(path string, info os.FileInfo, err error) error {
-		if IgnorePath(path, s.directory) {
+		if util.IgnoreFilepath(path, s.directory) {
 			return nil
 		}
 
 		// Only add to the tar if we add it to the layeredmap.
 		if s.l.MaybeAdd(path) {
 			added = true
-			return AddToTar(path, info, w)
+			return util.AddToTar(path, info, w)
 		}
 		return nil
 	})
 	return added, err
-}
-
-// TODO: ignore anything in /proc/self/mounts
-// ignore anything in the whitelist
-func IgnorePath(p, directory string) bool {
-	for _, d := range constants.Whitelist {
-		dirPath := filepath.Join(directory, d)
-		if pkgutil.HasFilepathPrefix(p, dirPath) {
-			return true
-		}
-	}
-	return false
-}
-
-func AddToTar(p string, i os.FileInfo, w *tar.Writer) error {
-	linkDst := ""
-	if i.Mode()&os.ModeSymlink != 0 {
-		var err error
-		linkDst, err = os.Readlink(p)
-		if err != nil {
-			return err
-		}
-	}
-	hdr, err := tar.FileInfoHeader(i, linkDst)
-	if err != nil {
-		return err
-	}
-	hdr.Name = p
-	w.WriteHeader(hdr)
-	if !i.Mode().IsRegular() {
-		return nil
-	}
-	r, err := os.Open(p)
-	if err != nil {
-		return err
-	}
-	if _, err := io.Copy(w, r); err != nil {
-		return err
-	}
-	return nil
 }

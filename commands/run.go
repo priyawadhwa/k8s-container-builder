@@ -19,6 +19,7 @@ package commands
 import (
 	"github.com/docker/docker/builder/dockerfile/instructions"
 	"github.com/sirupsen/logrus"
+	"os"
 	"os/exec"
 	"strings"
 )
@@ -35,18 +36,11 @@ func (r RunCommand) ExecuteCommand() error {
 	} else {
 		newCommand = r.cmd.CmdLine
 	}
-	return execute(newCommand)
-}
 
-func execute(c []string) error {
-	logrus.Infof("cmd: ", c[0])
-	logrus.Infof("args: ", c[1:])
-	cmd := exec.Command(c[0], c[1:]...)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		logrus.Errorf("Error: %s", output)
-		return err
-	}
-	logrus.Infof("Output from %s %s\n", cmd.Path, cmd.Args)
-	return nil
+	logrus.Infof("cmd: %s", newCommand[0])
+	logrus.Infof("args: %s", newCommand[1:])
+
+	cmd := exec.Command(newCommand[0], newCommand[1:]...)
+	cmd.Stdout = os.Stdout
+	return cmd.Run()
 }

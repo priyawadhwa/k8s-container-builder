@@ -33,10 +33,12 @@ var sourceImage img.MutableSource
 func InitializeSourceImage(srcImg string) error {
 	ref, err := docker.ParseReference("//" + srcImg)
 	if err != nil {
+		logrus.Debug("1. Unable to parse ref")
 		return err
 	}
 	ms, err := img.NewMutableSource(ref)
 	if err != nil {
+		logrus.Debug("Couldn't get new mutable source")
 		return err
 	}
 	sourceImage = *ms

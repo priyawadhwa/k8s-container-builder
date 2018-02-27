@@ -29,7 +29,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"io/ioutil"
-	"os"
 )
 
 var dockerfilePath = flag.String("dockerfile", "/dockerfile/Dockerfile", "Path to Dockerfile.")
@@ -42,6 +41,11 @@ func main() {
 	if err := setLogLevel(); err != nil {
 		logrus.Fatal(err)
 	}
+	// Initialize whitelist
+	if err := util.InitializeWhitelist(); err != nil {
+		logrus.Fatal(err)
+	}
+
 	// Read and parse dockerfile
 	b, err := ioutil.ReadFile(*dockerfilePath)
 	if err != nil {
@@ -51,13 +55,15 @@ func main() {
 	stages, err := dockerfile.Parse(b)
 
 	for index, stage := range stages {
-		finalStage := (index + 1) == len(stages)
+
 		baseImage := stage.BaseName
+
+		finalStage := (index + 1) == len(stages)
 		if finalStage {
 			// Initialize source image
 			logrus.Info("Initializing source image")
 			if err := image.InitializeSourceImage(baseImage); err != nil {
-				logrus.Fatal(err)
+				logrus.Fatalf("Unable to intitalize source images %s: %v", baseImage, err)
 			}
 		}
 		logrus.Infof("Extracting filesystem for %s...", baseImage)
@@ -72,8 +78,6 @@ func main() {
 		if err := snapshotter.Init(); err != nil {
 			logrus.Fatal(err)
 		}
-		// Save environment variables
-		env.SetEnvironmentVariables(baseImage)
 
 		// Get context information
 		context := dest.GetContext(*source)
@@ -100,10 +104,12 @@ func main() {
 			}
 		}
 		if finalStage {
+			// Save environment variables
+			env.SetEnvironmentVariables(baseImage)
 			continue
 		}
 		// Now package up filesystem as tarball
-		if err := util.SaveFileSystemAsTarball(stage.Name); err != nil {
+		if err := util.SaveFileSystemAsTarball(stage.Name, index); err != nil {
 			logrus.Fatal(err)
 		}
 		// Then, delete filesystem
@@ -111,8 +117,6 @@ func main() {
 	}
 
 	// Push the image
-	logrus.Info("Pushing image now")
-	logrus.Info(os.Stat("/etc/ssl/certs/ca-certificates.crt"))
 	if err := image.PushImage(*destImg); err != nil {
 		logrus.Fatal(err)
 	}

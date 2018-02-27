@@ -17,14 +17,19 @@ package util
 
 import (
 	"archive/tar"
+	"bufio"
 	pkgutil "github.com/GoogleCloudPlatform/container-diff/pkg/util"
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/constants"
-	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/snapshot"
 	"github.com/containers/image/docker"
 	"github.com/sirupsen/logrus"
+	"io"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 )
+
+var whitelist = []string{"/work-dir", "/dockerfile"}
 
 // CreateFile creates a file at path with contents specified
 func CreateFile(path string, contents []byte) error {
@@ -62,6 +67,7 @@ func IsDir(path string) (bool, error) {
 	return f.IsDir(), err
 }
 
+// ExtractFileSystemFromImage pulls an image and unpacks it to a file system at root
 func ExtractFileSystemFromImage(img string) error {
 	ref, err := docker.ParseReference("//" + img)
 	if err != nil {
@@ -71,17 +77,22 @@ func ExtractFileSystemFromImage(img string) error {
 	if err != nil {
 		return err
 	}
-	return pkgutil.GetFileSystemFromReference(ref, imgSrc, constants.RootDir, constants.Whitelist)
+	return pkgutil.GetFileSystemFromReference(ref, imgSrc, constants.RootDir, whitelist)
 }
 
-func GetImageTar(name string) (string, error) {
-	filepath := filepath.Join(constants.WorkDir, name+".tar")
-	_, err := os.Stat(filepath)
-	return filepath, err
+func GetImageTar(from string) (string, error) {
+	tarPath := filepath.Join(constants.WorkDir, from+".tar")
+	if _, err := os.Stat(tarPath); err != nil {
+		return "", err
+	}
+	return tarPath, nil
 }
 
-func SaveFileSystemAsTarball(dest string) error {
-	tarPath := filepath.Join(constants.WorkDir, dest+".tar")
+func SaveFileSystemAsTarball(name string, index int) error {
+	tarPath := filepath.Join(constants.WorkDir, name+".tar")
+	if name == "" {
+		tarPath = filepath.Join(constants.WorkDir, strconv.Itoa(index)+".tar")
+	}
 	f, err := os.Create(tarPath)
 	logrus.Infof("Created tarball to save filesystem in at %s", tarPath)
 	defer f.Close()
@@ -92,18 +103,31 @@ func SaveFileSystemAsTarball(dest string) error {
 	defer w.Close()
 
 	err = filepath.Walk(constants.RootDir, func(path string, info os.FileInfo, err error) error {
-		if snapshot.IgnorePath(path, constants.RootDir) {
+		if IgnoreFilepath(path, constants.RootDir) {
 			return nil
 		}
-		return snapshot.AddToTar(path, info, w)
+		if strings.Contains(path, "pkg/foo") {
+			logrus.Infof("################# %s", path)
+		}
+		return AddToTar(path, info, w)
 	})
-	return err
+	if err != nil {
+		return err
+	}
+
+	// Symlink
+	indexPath := filepath.Join(constants.WorkDir, strconv.Itoa(index)+".tar")
+	if indexPath != tarPath {
+		logrus.Debugf("Symlinking from %s to %s", tarPath, indexPath)
+		return os.Symlink(tarPath, indexPath)
+	}
+	return nil
 }
 
 func DeleteFileSystem() error {
 	logrus.Info("Deleting filesystem...")
 	err := filepath.Walk(constants.RootDir, func(path string, info os.FileInfo, err error) error {
-		if snapshot.IgnorePath(path, constants.RootDir) || path == constants.RootDir {
+		if IgnoreFilepathForDeletion(path, constants.RootDir) || path == constants.RootDir {
 			return nil
 		}
 		logrus.Debugf("Deleting %s", path)
@@ -114,4 +138,75 @@ func DeleteFileSystem() error {
 		return nil
 	})
 	return err
+}
+
+// TODO: ignore anything in /proc/self/mounts
+// ignore anything in the whitelist
+func IgnoreFilepath(p, directory string) bool {
+	for _, d := range whitelist {
+		dirPath := filepath.Join(directory, d)
+		if pkgutil.HasFilepathPrefix(p, dirPath) {
+			return true
+		}
+	}
+	return false
+}
+
+func IgnoreFilepathForDeletion(p, directory string) bool {
+	deleteWhitelist := append(whitelist, constants.ConfigPath)
+	for _, d := range deleteWhitelist {
+		dirPath := filepath.Join(directory, d)
+		if filepath.Clean(dirPath) == filepath.Clean(p) {
+			return true
+		}
+		if pkgutil.HasFilepathPrefix(dirPath, p) || pkgutil.HasFilepathPrefix(p, dirPath) {
+			return true
+		}
+	}
+	return false
+}
+
+func InitializeWhitelist() error {
+	whitelist, err := fileSystemWhitelist(constants.WhitelistPath)
+	logrus.Infof("Whitelisted directories are %s", whitelist)
+	return err
+}
+
+// Get whitelist from roots of mounted files
+// Each line of /proc/self/mountinfo is in the form:
+// 36 35 98:0 /mnt1 /mnt2 rw,noatime master:1 - ext3 /dev/root rw,errors=continue
+// (1)(2)(3)   (4)   (5)      (6)      (7)   (8) (9)   (10)         (11)
+// Where (5) is the mount point relative to the process's root
+// From: https://www.kernel.org/doc/Documentation/filesystems/proc.txt
+func fileSystemWhitelist(path string) ([]string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	reader := bufio.NewReader(f)
+	for {
+		line, err := reader.ReadString('\n')
+		logrus.Debugf("Read the following line from %s: %s", path, line)
+		if err != nil && err != io.EOF {
+			return nil, err
+		}
+		lineArr := strings.Split(line, " ")
+		if len(lineArr) < 5 {
+			if err == io.EOF {
+				logrus.Debugf("Reached end of file %s", path)
+				break
+			}
+			continue
+		}
+		if lineArr[4] != constants.RootDir {
+			logrus.Debugf("Appending %s from line: %s", lineArr[4], line)
+			whitelist = append(whitelist, lineArr[4])
+		}
+		if err == io.EOF {
+			logrus.Debugf("Reached end of file %s", path)
+			break
+		}
+	}
+	return whitelist, nil
 }

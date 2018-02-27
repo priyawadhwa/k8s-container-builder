@@ -19,6 +19,7 @@ package commands
 import (
 	pkgutil "github.com/GoogleCloudPlatform/container-diff/pkg/util"
 	"github.com/GoogleCloudPlatform/k8s-container-builder/contexts/dest"
+	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/constants"
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/util"
 	"github.com/docker/docker/builder/dockerfile/instructions"
 	"github.com/pkg/errors"
@@ -34,29 +35,41 @@ type CopyCommand struct {
 
 func (c *CopyCommand) ExecuteCommand() error {
 	srcs := c.cmd.SourcesAndDest[:len(c.cmd.SourcesAndDest)-1]
-	destination := c.cmd.SourcesAndDest[len(c.cmd.SourcesAndDest)-1]
+	dest := c.cmd.SourcesAndDest[len(c.cmd.SourcesAndDest)-1]
 
-	logrus.Infof("cmd: copy", srcs)
-	logrus.Infof("dest: ", destination)
+	logrus.Infof("cmd: copy %s", srcs)
+	logrus.Infof("dest: %s", dest)
 
-	if c.cmd.From != "" {
-		filepath, err := util.GetImageTar(c.cmd.From)
-		if err != nil {
-			return err
-		}
-		c.context = dest.GetTarContext(filepath)
+	if err := c.checkContext(); err != nil {
+		return err
 	}
 
 	if containsWildcards(srcs) {
 		return c.executeWithWildcards()
 	}
 	// If there are multiple sources, the destination must be a directory
-	if len(srcs) > 1 {
-		if !isDir(destination) {
-			return errors.Errorf("When specifying multiple sources in a COPY command, destination must be a directory and end in '/'")
+	if len(srcs) > 1 && !isDir(dest) {
+		return errors.New("When specifying multiple sources in a COPY command, destination must be a directory and end in '/'")
+	}
+	// If destination is not a directory, copy over the file into the destination
+	if !isDir(dest) {
+		src := filepath.Clean(srcs[0])
+		files, err := c.context.GetFilesFromSource(src)
+		if err != nil {
+			return err
+		}
+		if len(files) == 0 {
+			return errors.New("No source files specified for this command.")
+		}
+		if len(files) > 1 {
+			return errors.New("When specifying multiple sources in a COPY command, destination must be a directory and end in '/'")
+		}
+		for file, contents := range files {
+			logrus.Infof("Copying from %s to %s", file, dest)
+			return util.CreateFile(dest, contents)
 		}
 	}
-	// Go through each src, and copy over the files into dest
+	// Otherwise, go through each src, and copy over the files into dest
 	for _, src := range srcs {
 		src = filepath.Clean(src)
 		files, err := c.context.GetFilesFromSource(src)
@@ -64,12 +77,15 @@ func (c *CopyCommand) ExecuteCommand() error {
 			return err
 		}
 		for file, contents := range files {
-			if !isDir(destination) {
-				logrus.Infof("Copying from %s to %s", file, destination)
-				return util.CreateFile(destination, contents)
+			relPath, err := filepath.Rel(src, file)
+			if err != nil {
+				return err
 			}
-			destPath := filepath.Join(destination, filepath.Base(file))
-			logrus.Infof("Copying from %s to %s", file, destination)
+			if relPath == "." {
+				relPath = filepath.Base(file)
+			}
+			destPath := filepath.Join(dest, relPath)
+			logrus.Infof("Copying from %s to %s", file, destPath)
 			err = util.CreateFile(destPath, contents)
 			if err != nil {
 				return err
@@ -83,45 +99,58 @@ func (c *CopyCommand) executeWithWildcards() error {
 	srcs := c.cmd.SourcesAndDest[:len(c.cmd.SourcesAndDest)-1]
 	dest := c.cmd.SourcesAndDest[len(c.cmd.SourcesAndDest)-1]
 
-	// Get all files from the source, since each needs to be matched against the sources
+	// Get all files from the source, since each needs to be matched against wildcards
 	files, err := c.context.GetFilesFromSource("")
 	if err != nil {
 		return err
 	}
 	matchedFiles, err := getMatchedFiles(srcs, files)
+	logrus.Info(matchedFiles)
 	if err != nil {
 		return err
 	}
-	// If destination is a directory, copy all the matched files
-	// for each source into it
-	if isDir(dest) {
-		for _, srcFiles := range matchedFiles {
-			for _, file := range srcFiles {
-				// Join destination and filename to create final path for the file
-
-				destPath := filepath.Join(dest, filepath.Base(file))
-				logrus.Infof("Copying %s into file %s", file, destPath)
-				err = util.CreateFile(destPath, files[file])
-				if err != nil {
-					return err
-				}
-			}
-		}
-	} else {
-		// If dest is not a directory, make sure only 1 file was matched
+	if !isDir(dest) {
+		// If destination is not a directory, make sure only 1 file was matched
 		totalFiles := 0
 		for _, srcFiles := range matchedFiles {
 			totalFiles += len(srcFiles)
 		}
+		if totalFiles == 0 {
+			return errors.New("No source files specified for this command.")
+		}
 		if totalFiles > 1 {
 			return errors.New("When specifying multiple sources in a COPY command, destination must be a directory and end in '/'")
 		}
+		// Then, copy over the file to the destination
 		for _, srcFiles := range matchedFiles {
 			for _, file := range srcFiles {
 				logrus.Infof("Copying %s into file %s", file, dest)
 				return util.CreateFile(dest, files[file])
 			}
 		}
+	}
+	// Otherwise, destination is a directory, and we copy over all matched files
+	for _, srcFiles := range matchedFiles {
+		for _, file := range srcFiles {
+			// Join destination and filename to create final path for the file
+			destPath := filepath.Join(dest, filepath.Base(file))
+			err = util.CreateFile(destPath, files[file])
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (c *CopyCommand) checkContext() error {
+	if c.cmd.From != "" {
+		filepath, err := util.GetImageTar(c.cmd.From)
+		if err != nil {
+			return err
+		}
+		logrus.Debugf("Using source context %s", filepath)
+		c.context = dest.GetTarContext(filepath)
 	}
 	return nil
 }
@@ -150,10 +179,14 @@ func getMatchedFiles(srcs []string, files map[string][]byte) (map[string][]strin
 		matchedFiles := []string{}
 		for file := range files {
 			matched, err := filepath.Match(src, file)
-			keep := matched || pkgutil.HasFilepathPrefix(file, src)
 			if err != nil {
 				return nil, err
 			}
+			matchedRoot, err := filepath.Match(filepath.Join(constants.RootDir, src), file)
+			if err != nil {
+				return nil, err
+			}
+			keep := matched || matchedRoot || pkgutil.HasFilepathPrefix(file, src)
 			if !keep {
 				continue
 			}
