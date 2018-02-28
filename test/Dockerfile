@@ -14,14 +14,16 @@
 
 FROM gcr.io/google-appengine/debian9:latest as first
 RUN echo "hey" > /etc/foo
+ENV hello hello
+ENV hi hi
 # RUN apt-get update && apt-get -y install curl
 
 
-FROM gcr.io/distroless/base
-COPY --from=0 /etc/foo /etc/foo
-COPY pkg/*/d*    pkg/ 
+# FROM gcr.io/distroless/base
+# COPY --from=0 /etc/foo /etc/foo
+# COPY pkg/*/d*    pkg/ 
 
 
-FROM gcr.io/google-appengine/python
-RUN echo "heyo" > /etc/foo2
-COPY --from=1 pkg/* /dockerfile.go
+# FROM gcr.io/google-appengine/python
+# RUN echo "heyo" > /etc/foo2
+# COPY --from=1 pkg/* /dockerfile.go

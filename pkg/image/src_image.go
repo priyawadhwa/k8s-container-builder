@@ -45,6 +45,9 @@ func InitializeSourceImage(srcImg string) error {
 	return nil
 }
 
+func GetEnvs() map[string]string {
+}
+
 // AppendLayer appends a layer onto the base image
 func AppendLayer(contents []byte) error {
 	return sourceImage.AppendLayer(contents)

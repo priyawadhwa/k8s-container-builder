@@ -19,4 +19,4 @@ ADD out/executor /work-dir/executor
 ADD files/policy.json /work-dir/policy.json
 ADD files/docker-credential-gcr_linux_amd64-1.4.1.tar.gz /work-dir/
 ADD files/config.json /root/.docker/
-COPY test/Dockerfile /dockerfile/Dockerfile
+ADD test/Dockerfile /dockerfile/Dockerfile
