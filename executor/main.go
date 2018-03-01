@@ -87,10 +87,19 @@ func main() {
 			if err := dockerCommand.ExecuteCommand(); err != nil {
 				logrus.Fatal(err)
 			}
-			logrus.Info("Taking snapshot now.")
-			contents, err := snapshotter.TakeSnapshot()
-			if err != nil {
-				logrus.Fatal(err)
+			var contents []byte
+			if dockerCommand.GetSnapshotFiles() != nil {
+				logrus.Info("Taking snapshot of specific files now.")
+				contents, err = snapshotter.TakeSnapshotOfFiles(dockerCommand.GetSnapshotFiles())
+				if err != nil {
+					logrus.Fatal(err)
+				}
+			} else {
+				logrus.Info("Taking generic snapshot now.")
+				contents, err = snapshotter.TakeSnapshot()
+				if err != nil {
+					logrus.Fatal(err)
+				}
 			}
 			if contents == nil {
 				logrus.Info("Contents are nil, continue.")

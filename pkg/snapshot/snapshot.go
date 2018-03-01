@@ -75,6 +75,36 @@ func (s *Snapshotter) TakeSnapshot() ([]byte, error) {
 	return contents, nil
 }
 
+func (s *Snapshotter) TakeSnapshotOfFiles(files []string) ([]byte, error) {
+	logrus.Infof("Taking snapshot of files %s", files)
+	if len(files) == 0 {
+		logrus.Info("No files changed in this command, skipping snapshotting.")
+		return nil, nil
+	}
+	buf := bytes.NewBuffer([]byte{})
+	w := tar.NewWriter(buf)
+	defer w.Close()
+	for _, file := range files {
+		info, err := os.Stat(file)
+		if err != nil {
+			return nil, err
+		}
+		if util.IgnoreFilepath(file, s.directory) {
+			continue
+		}
+		util.AddToTar(file, info, w)
+	}
+	var contents []byte
+	for {
+		next := buf.Next(buf.Len())
+		if len(next) == 0 {
+			break
+		}
+		contents = append(contents, next...)
+	}
+	return contents, nil
+}
+
 func (s *Snapshotter) snapShotFS(f io.Writer) (bool, error) {
 	s.l.Snapshot()
 	added := false

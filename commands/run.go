@@ -28,7 +28,7 @@ type RunCommand struct {
 	cmd *instructions.RunCommand
 }
 
-func (r RunCommand) ExecuteCommand() error {
+func (r *RunCommand) ExecuteCommand() error {
 	var newCommand []string
 	if r.cmd.PrependShell {
 		newCommand = []string{"sh", "-c"}
@@ -43,4 +43,8 @@ func (r RunCommand) ExecuteCommand() error {
 	cmd := exec.Command(newCommand[0], newCommand[1:]...)
 	cmd.Stdout = os.Stdout
 	return cmd.Run()
+}
+
+func (r *RunCommand) GetSnapshotFiles() []string {
+	return nil
 }

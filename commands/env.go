@@ -18,8 +18,10 @@ package commands
 
 import (
 	"fmt"
+
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/image"
 	"github.com/docker/docker/builder/dockerfile/instructions"
+	"github.com/sirupsen/logrus"
 	"os"
 )
 
@@ -29,10 +31,10 @@ type EnvCommand struct {
 }
 
 // ExecuteCommand sets the env variables
-func (e EnvCommand) ExecuteCommand() error {
-	fmt.Println("cmd: ENV")
-	envVars := e.cmd.Env
-	for _, pair := range envVars {
+func (e *EnvCommand) ExecuteCommand() error {
+	logrus.Info("cmd: ENV")
+	newEnvs := e.cmd.Env
+	for _, pair := range newEnvs {
 		fmt.Printf("Setting environment variable %s:%s", pair.Key, pair.Value)
 		if err := os.Setenv(pair.Key, pair.Value); err != nil {
 			return err
@@ -41,23 +43,16 @@ func (e EnvCommand) ExecuteCommand() error {
 	return e.addEnvToConfig()
 }
 
-func (e EnvCommand) addEnvToConfig() error {
-	currentEnvs := 
+func (e *EnvCommand) addEnvToConfig() error {
+	newEnvs := e.cmd.Env
+	envs := image.Env()
+	for _, pair := range newEnvs {
+		envs[pair.Key] = pair.Value
+	}
+	image.SetEnv(envs)
+	return nil
 }
 
-func (m *MutableSource) AddEnv(key, value string) error {
-	currentEnv := m.cfg.Schema2V1Image.Config.Env
-	// First split into map of key:value pairs
-	envMap := make(map[string]string)
-	for _, e := range currentEnv {
-		arr := strings.Split(e, "=")
-		envMap[arr[0]] = arr[1]
-	}
-	envMap[key] = value
-	var newEnv []string
-	for key, value := range envMap {
-		newEnv = append(newEnv, key+"="+value)
-	}
-	m.cfg.Schema2V1Image.Config.Env = newEnv
-	return nil
+func (e *EnvCommand) GetSnapshotFiles() []string {
+	return []string{}
 }

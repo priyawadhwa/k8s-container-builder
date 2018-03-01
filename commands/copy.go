@@ -29,8 +29,9 @@ import (
 )
 
 type CopyCommand struct {
-	cmd     *instructions.CopyCommand
-	context dest.Context
+	cmd           *instructions.CopyCommand
+	context       dest.Context
+	snapshotFiles []string
 }
 
 func (c *CopyCommand) ExecuteCommand() error {
@@ -66,7 +67,10 @@ func (c *CopyCommand) ExecuteCommand() error {
 		}
 		for file, contents := range files {
 			logrus.Infof("Copying from %s to %s", file, dest)
-			return util.CreateFile(dest, contents)
+			if err := util.CreateFile(dest, contents); err != nil {
+				return err
+			}
+			c.snapshotFiles = append(c.snapshotFiles, dest)
 		}
 	}
 	// Otherwise, go through each src, and copy over the files into dest
@@ -90,6 +94,7 @@ func (c *CopyCommand) ExecuteCommand() error {
 			if err != nil {
 				return err
 			}
+			c.snapshotFiles = append(c.snapshotFiles, destPath)
 		}
 	}
 	return nil
@@ -125,7 +130,10 @@ func (c *CopyCommand) executeWithWildcards() error {
 		for _, srcFiles := range matchedFiles {
 			for _, file := range srcFiles {
 				logrus.Infof("Copying %s into file %s", file, dest)
-				return util.CreateFile(dest, files[file])
+				if err := util.CreateFile(dest, files[file]); err != nil {
+					return err
+				}
+				c.snapshotFiles = append(c.snapshotFiles, dest)
 			}
 		}
 	}
@@ -138,9 +146,14 @@ func (c *CopyCommand) executeWithWildcards() error {
 			if err != nil {
 				return err
 			}
+			c.snapshotFiles = append(c.snapshotFiles, destPath)
 		}
 	}
 	return nil
+}
+
+func (c *CopyCommand) GetSnapshotFiles() []string {
+	return c.snapshotFiles
 }
 
 func (c *CopyCommand) checkContext() error {

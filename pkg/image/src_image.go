@@ -45,12 +45,17 @@ func InitializeSourceImage(srcImg string) error {
 	return nil
 }
 
-func GetEnvs() map[string]string {
+func Env() map[string]string {
+	return sourceImage.Env()
+}
+
+func SetEnv(envs map[string]string) {
+	sourceImage.SetEnv(envs, "ENV")
 }
 
 // AppendLayer appends a layer onto the base image
 func AppendLayer(contents []byte) error {
-	return sourceImage.AppendLayer(contents)
+	return sourceImage.AppendLayer(contents, "kbuild")
 }
 
 // PushImage pushes the final image
