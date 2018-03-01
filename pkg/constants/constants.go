@@ -13,7 +13,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-
 package constants
 
 const (
@@ -23,5 +22,16 @@ const (
 	// RootDir is the path to the root directory
 	RootDir = "/"
 
+	// WorkspaceDir is the path to the workspace
+	WorkspaceDir = "/workspace/"
+
 	WhitelistPath = "/proc/self/mountinfo"
+
+	ConfigPath = "/root/.docker/config.json"
 )
+
+// DefaultEnvVariables are the default env variables set in the container
+var DefaultEnvVariables = map[string]string{
+	"PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root:/workspace",
+	"HOME": "/root",
+}

@@ -23,7 +23,7 @@ import (
 	"github.com/docker/docker/builder/dockerfile/parser"
 )
 
-// Parse parses the contents of a Dockerfile and returns a list of commands
+// Parse parses through dockerfile contents
 func Parse(b []byte) ([]instructions.Stage, error) {
 	p, err := parser.Parse(bytes.NewReader(b))
 	if err != nil {

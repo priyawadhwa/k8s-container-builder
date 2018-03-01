@@ -1,0 +1,6 @@
+vendor/
+commands/
+contexts/
+executor/
+pkg/
+Gopkg.*

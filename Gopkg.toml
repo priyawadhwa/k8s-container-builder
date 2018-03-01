@@ -17,3 +17,7 @@
   name = "github.com/docker/docker"
   revision = "b1a1234c60cf87048814aa37da523b03a7b0d344"
   source = "github.com/docker/docker"
+
+[[constraint]]
+  name = "github.com/containers/image"
+  revision = "495da41bd26c50be62fa07ae903ea2ee54c00283"
