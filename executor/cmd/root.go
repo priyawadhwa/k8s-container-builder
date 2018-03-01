@@ -71,6 +71,9 @@ func execute() error {
 	}
 
 	stages, err := dockerfile.Parse(b)
+	if err != nil {
+		return err
+	}
 
 	for index, stage := range stages {
 

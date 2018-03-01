@@ -72,6 +72,7 @@ func (c *CopyCommand) ExecuteCommand() error {
 			}
 			c.snapshotFiles = append(c.snapshotFiles, dest)
 		}
+		return nil
 	}
 	// Otherwise, go through each src, and copy over the files into dest
 	for _, src := range srcs {

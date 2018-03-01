@@ -1,9 +1,12 @@
 /*
 Copyright 2018 Google LLC
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -124,6 +127,45 @@ func TestEmptySnapshot(t *testing.T) {
 	// Since we took a snapshot with no changes, contents should be nil
 	if contents != nil {
 		t.Fatal("Contents should be nil, since no changes to the filesystem were made.")
+	}
+}
+
+func TestSnapshotFiles(t *testing.T) {
+	testDir, snapshotter, err := setUpTestDir()
+	defer os.RemoveAll(testDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	filesToSnapshot := []string{
+		filepath.Join(testDir, "foo"),
+	}
+	contents, err := snapshotter.TakeSnapshotOfFiles(filesToSnapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expectedContents := map[string]string{
+		filepath.Join(testDir, "foo"): "baz1",
+	}
+	// Check contents of the snapshot, make sure contents is equivalent to snapshotFiles
+	reader := bytes.NewReader(contents)
+	tr := tar.NewReader(reader)
+	num := 0
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		num = num + 1
+		if _, isFile := expectedContents[hdr.Name]; !isFile {
+			t.Fatalf("File %s unexpectedly in tar", hdr.Name)
+		}
+		contents, _ := ioutil.ReadAll(tr)
+		if string(contents) != expectedContents[hdr.Name] {
+			t.Fatalf("Contents of %s incorrect, expected: %s, actual: %s", hdr.Name, expectedContents[hdr.Name], string(contents))
+		}
+	}
+	if num != 1 {
+		t.Fatalf("%s was not added.", filepath.Join(testDir, "foo"))
 	}
 }
 

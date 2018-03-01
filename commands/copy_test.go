@@ -18,6 +18,7 @@ package commands
 import (
 	"github.com/GoogleCloudPlatform/k8s-container-builder/testutil"
 	"github.com/pkg/errors"
+	"sort"
 	"testing"
 )
 
@@ -41,10 +42,10 @@ var testCases = []struct {
 			"dir/banana.go": nil,
 		},
 		output: map[string][]string{
-			"pkg/*": []string{
+			"pkg/*": {
 				"pkg/a",
 			},
-			"dir/a*.go": []string{
+			"dir/a*.go": {
 				"dir/apple.go",
 			},
 		},
@@ -64,13 +65,13 @@ var testCases = []struct {
 			"dir/banana.go": nil,
 		},
 		output: map[string][]string{
-			"pkg/*": []string{
+			"pkg/*": {
 				"pkg/a",
 			},
-			"dir/a*.go": []string{
+			"dir/a*.go": {
 				"dir/apple.go",
 			},
-			"pkg": []string{
+			"pkg": {
 				"pkg/a",
 				"pkg/b/c",
 			},
@@ -86,10 +87,10 @@ var testCases = []struct {
 			"pkg/a": nil,
 		},
 		output: map[string][]string{
-			"pkg/*": []string{
+			"pkg/*": {
 				"pkg/a",
 			},
-			"test": []string{},
+			"test": {},
 		},
 	},
 	{
@@ -101,7 +102,7 @@ var testCases = []struct {
 			"/pkg/a": nil,
 		},
 		output: map[string][]string{
-			"pkg/*": []string{
+			"pkg/*": {
 				"/pkg/a",
 			},
 		},
@@ -111,6 +112,9 @@ var testCases = []struct {
 func TestCopy_getMatchedFiles(t *testing.T) {
 	for _, tc := range testCases {
 		output, err := getMatchedFiles(tc.srcs, tc.files)
+		for _, value := range output {
+			sort.Strings(value)
+		}
 		testutil.CheckErrorAndDeepEqual(t, false, errors.Wrap(err, tc.name), tc.output, output)
 	}
 }
