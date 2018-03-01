@@ -17,6 +17,7 @@ limitations under the License.
 package util
 
 import (
+	"archive/tar"
 	"bufio"
 	pkgutil "github.com/GoogleCloudPlatform/container-diff/pkg/util"
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/constants"
@@ -24,10 +25,18 @@ import (
 	"github.com/sirupsen/logrus"
 	"io"
 	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 )
 
 var whitelist = []string{"/workspace"}
+
+func InitializeWhitelist() error {
+	whitelist, err := fileSystemWhitelist(constants.WhitelistPath)
+	logrus.Infof("Whitelisted directories are %s", whitelist)
+	return err
+}
 
 // ExtractFileSystemFromImage pulls an image and unpacks it to a file system at root
 func ExtractFileSystemFromImage(img string) error {
@@ -39,11 +48,6 @@ func ExtractFileSystemFromImage(img string) error {
 	if err != nil {
 		return err
 	}
-	whitelist, err := fileSystemWhitelist(constants.WhitelistPath)
-	if err != nil {
-		return err
-	}
-	logrus.Infof("Whitelisted directories are %s", whitelist)
 	return pkgutil.GetFileSystemFromReference(ref, imgSrc, constants.RootDir, whitelist)
 }
 
@@ -84,4 +88,126 @@ func fileSystemWhitelist(path string) ([]string, error) {
 		}
 	}
 	return whitelist, nil
+}
+
+// CreateFile creates a file at path with contents specified
+func CreateFile(path string, contents []byte) error {
+	// Create directory path if it doesn't exist
+	baseDir := filepath.Dir(path)
+	if _, err := os.Stat(baseDir); os.IsNotExist(err) {
+		logrus.Debugf("baseDir %s for file %s does not exist. Creating.", baseDir, path)
+		if err := os.MkdirAll(baseDir, 0755); err != nil {
+			return err
+		}
+	}
+
+	f, err := os.Create(path)
+	defer f.Close()
+	if err != nil {
+		return err
+	}
+	_, err = f.Write(contents)
+	return err
+}
+
+// Files returns a list of all files that stem from root
+func Files(root string) ([]string, error) {
+	var files []string
+	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		files = append(files, path)
+		return err
+	})
+	return files, err
+}
+
+// IsDir checks if path is a directory
+func IsDir(path string) (bool, error) {
+	f, err := os.Stat(path)
+	return f.IsDir(), err
+}
+
+func GetImageTar(from string) (string, error) {
+	tarPath := filepath.Join(constants.WorkspaceDir, from+".tar")
+	if _, err := os.Stat(tarPath); err != nil {
+		return "", err
+	}
+	return tarPath, nil
+}
+
+func SaveFileSystemAsTarball(name string, index int) error {
+	tarPath := filepath.Join(constants.WorkspaceDir, name+".tar")
+	if name == "" {
+		tarPath = filepath.Join(constants.WorkspaceDir, strconv.Itoa(index)+".tar")
+	}
+	f, err := os.Create(tarPath)
+	logrus.Infof("Created tarball to save filesystem in at %s", tarPath)
+	defer f.Close()
+	if err != nil {
+		return err
+	}
+	w := tar.NewWriter(f)
+	defer w.Close()
+
+	err = filepath.Walk(constants.RootDir, func(path string, info os.FileInfo, err error) error {
+		if IgnoreFilepath(path, constants.RootDir) {
+			return nil
+		}
+		if strings.Contains(path, "pkg/foo") {
+			logrus.Infof("################# %s", path)
+		}
+		return AddToTar(path, info, w)
+	})
+	if err != nil {
+		return err
+	}
+
+	// Symlink
+	indexPath := filepath.Join(constants.WorkspaceDir, strconv.Itoa(index)+".tar")
+	if indexPath != tarPath {
+		logrus.Debugf("Symlinking from %s to %s", tarPath, indexPath)
+		return os.Symlink(tarPath, indexPath)
+	}
+	return nil
+}
+
+func DeleteFileSystem() error {
+	logrus.Info("Deleting filesystem...")
+	err := filepath.Walk(constants.RootDir, func(path string, info os.FileInfo, err error) error {
+		if IgnoreFilepathForDeletion(path, constants.RootDir) || path == constants.RootDir {
+			return nil
+		}
+		logrus.Debugf("Deleting %s", path)
+		e := os.RemoveAll(path)
+		if e != nil {
+			logrus.Debugf("Couldn't remove %s: %s", path, e)
+		}
+		return nil
+	})
+	return err
+}
+
+// TODO: ignore anything in /proc/self/mounts
+// ignore anything in the whitelist
+func IgnoreFilepath(p, directory string) bool {
+	for _, d := range whitelist {
+		dirPath := filepath.Join(directory, d)
+		if pkgutil.HasFilepathPrefix(p, dirPath) {
+			return true
+		}
+	}
+	return false
+}
+
+func IgnoreFilepathForDeletion(p, directory string) bool {
+	deleteWhitelist := append(whitelist, constants.ConfigPath)
+	for _, d := range deleteWhitelist {
+		dirPath := filepath.Join(directory, d)
+		if filepath.Clean(dirPath) == filepath.Clean(p) {
+			return true
+		}
+		if pkgutil.HasFilepathPrefix(dirPath, p) || pkgutil.HasFilepathPrefix(p, dirPath) {
+			return true
+		}
+	}
+	return false
 }

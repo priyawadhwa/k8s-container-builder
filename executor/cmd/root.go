@@ -17,8 +17,13 @@ limitations under the License.
 package cmd
 
 import (
+	"github.com/GoogleCloudPlatform/k8s-container-builder/commands"
+	"github.com/GoogleCloudPlatform/k8s-container-builder/contexts/dest"
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/constants"
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/dockerfile"
+	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/env"
+	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/image"
+	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/snapshot"
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/util"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -54,19 +59,89 @@ var RootCmd = &cobra.Command{
 }
 
 func execute() error {
-	// Parse dockerfile and unpack base image to root
-	d, err := ioutil.ReadFile(dockerfilePath)
+	// Initialize whitelist
+	if err := util.InitializeWhitelist(); err != nil {
+		return err
+	}
+
+	// Read and parse dockerfile
+	b, err := ioutil.ReadFile(dockerfilePath)
 	if err != nil {
 		return err
 	}
 
-	stages, err := dockerfile.Parse(d)
-	if err != nil {
-		return err
-	}
-	baseImage := stages[0].BaseName
+	stages, err := dockerfile.Parse(b)
 
-	// Unpack file system to root
-	logrus.Infof("Unpacking filesystem of %s...", baseImage)
-	return util.ExtractFileSystemFromImage(baseImage)
+	for index, stage := range stages {
+
+		baseImage := stage.BaseName
+
+		finalStage := (index + 1) == len(stages)
+		if finalStage {
+			// Initialize source image
+			logrus.Info("Initializing source image")
+			if err := image.InitializeSourceImage(baseImage); err != nil {
+				logrus.Fatalf("Unable to intitalize source images %s: %v", baseImage, err)
+			}
+		}
+		logrus.Infof("Extracting filesystem for %s...", baseImage)
+		err = util.ExtractFileSystemFromImage(baseImage)
+		if err != nil {
+			return err
+		}
+		l := snapshot.NewLayeredMap(util.Hasher())
+		snapshotter := snapshot.NewSnapshotter(l, constants.RootDir)
+
+		// Take initial snapshot
+		if err := snapshotter.Init(); err != nil {
+			return err
+		}
+
+		// Get context information
+		context := dest.GetContext(srcContext)
+
+		for _, cmd := range stage.Commands {
+			dockerCommand := commands.GetCommand(cmd, context)
+			if err := dockerCommand.ExecuteCommand(); err != nil {
+				return err
+			}
+			var contents []byte
+			if dockerCommand.GetSnapshotFiles() != nil {
+				logrus.Info("Taking snapshot of specific files now.")
+				contents, err = snapshotter.TakeSnapshotOfFiles(dockerCommand.GetSnapshotFiles())
+				if err != nil {
+					return err
+				}
+			} else {
+				logrus.Info("Taking generic snapshot now.")
+				contents, err = snapshotter.TakeSnapshot()
+				if err != nil {
+					return err
+				}
+			}
+			if contents == nil {
+				logrus.Info("Contents are nil, continue.")
+				continue
+			}
+			if finalStage {
+				logrus.Info("Appending to source image")
+				if err := image.AppendLayer(contents); err != nil {
+					return err
+				}
+			}
+		}
+		if finalStage {
+			// Save environment variables
+			env.SetEnvironmentVariables(baseImage)
+			continue
+		}
+		// Now package up filesystem as tarball
+		if err := util.SaveFileSystemAsTarball(stage.Name, index); err != nil {
+			return err
+		}
+		// Then, delete filesystem
+		util.DeleteFileSystem()
+	}
+	// Push the image
+	return image.PushImage(name)
 }
