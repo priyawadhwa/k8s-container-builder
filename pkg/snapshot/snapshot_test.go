@@ -44,7 +44,7 @@ func TestSnapshotFileChange(t *testing.T) {
 		t.Fatalf("Error setting up fs: %s", err)
 	}
 	// Take another snapshot
-	contents, err := snapshotter.TakeSnapshot()
+	contents, _, err := snapshotter.TakeSnapshot()
 	if err != nil {
 		t.Fatalf("Error taking snapshot of fs: %s", err)
 	}
@@ -82,7 +82,7 @@ func TestSnapshotChangePermissions(t *testing.T) {
 		t.Fatalf("Error changing permissions on %s: %v", batPath, err)
 	}
 	// Take another snapshot
-	contents, err := snapshotter.TakeSnapshot()
+	contents, _, err := snapshotter.TakeSnapshot()
 	if err != nil {
 		t.Fatalf("Error taking snapshot of fs: %s", err)
 	}
@@ -120,13 +120,13 @@ func TestEmptySnapshot(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Take snapshot with no changes
-	contents, err := snapshotter.TakeSnapshot()
+	_, filesAdded, err := snapshotter.TakeSnapshot()
 	if err != nil {
 		t.Fatalf("Error taking snapshot of fs: %s", err)
 	}
 	// Since we took a snapshot with no changes, contents should be nil
-	if contents != nil {
-		t.Fatal("Contents should be nil, since no changes to the filesystem were made.")
+	if filesAdded {
+		t.Fatal("Files were added even though no changes were made to filesystem.")
 	}
 }
 

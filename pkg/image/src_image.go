@@ -58,6 +58,10 @@ func AppendLayer(contents []byte) error {
 	return sourceImage.AppendLayer(contents, "kbuild")
 }
 
+func AppendEmptyLayerToConfigHistory(author string) {
+	sourceImage.SetConfig(sourceImage.Config(), author, true)
+}
+
 // PushImage pushes the final image
 func PushImage(destImg string) error {
 	logrus.Infof("Pushing image to %s", destImg)

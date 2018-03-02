@@ -32,12 +32,11 @@ import (
 type Snapshotter struct {
 	l         *LayeredMap
 	directory string
-	snapshots []string
 }
 
 // NewSnapshotter creates a new snapshotter rooted at d
 func NewSnapshotter(l *LayeredMap, d string) *Snapshotter {
-	return &Snapshotter{l: l, directory: d, snapshots: []string{}}
+	return &Snapshotter{l: l, directory: d}
 }
 
 // Init initializes a new snapshotter
@@ -49,30 +48,18 @@ func (s *Snapshotter) Init() error {
 }
 
 // TakeSnapshot takes a snapshot of the filesystem, avoiding directories in the whitelist, and creates
-// a tarball of the changed files
-func (s *Snapshotter) TakeSnapshot() ([]byte, error) {
-
+// a tarball of the changed files. Return contents of the tarball, and whether or not any files were changed
+func (s *Snapshotter) TakeSnapshot() ([]byte, bool, error) {
 	buf := bytes.NewBuffer([]byte{})
-	added, err := s.snapShotFS(buf)
+	filesAdded, err := s.snapShotFS(buf)
 	if err != nil {
-		return nil, err
+		return nil, filesAdded, err
 	}
-	if !added {
-		logrus.Infof("No files were changed in this command, this layer will not be appended.")
-		return nil, nil
-	}
+	contents, err := ioutil.ReadAll(buf)
 	if err != nil {
-		return nil, err
+		return nil, filesAdded, err
 	}
-	var contents []byte
-	for {
-		next := buf.Next(buf.Len())
-		if len(next) == 0 {
-			break
-		}
-		contents = append(contents, next...)
-	}
-	return contents, nil
+	return contents, filesAdded, err
 }
 
 func (s *Snapshotter) TakeSnapshotOfFiles(files []string) ([]byte, error) {
@@ -107,7 +94,7 @@ func (s *Snapshotter) TakeSnapshotOfFiles(files []string) ([]byte, error) {
 
 func (s *Snapshotter) snapShotFS(f io.Writer) (bool, error) {
 	s.l.Snapshot()
-	added := false
+	filesAdded := false
 	w := tar.NewWriter(f)
 	defer w.Close()
 
@@ -118,10 +105,10 @@ func (s *Snapshotter) snapShotFS(f io.Writer) (bool, error) {
 
 		// Only add to the tar if we add it to the layeredmap.
 		if s.l.MaybeAdd(path) {
-			added = true
+			filesAdded = true
 			return util.AddToTar(path, info, w)
 		}
 		return nil
 	})
-	return added, err
+	return filesAdded, err
 }

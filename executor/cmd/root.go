@@ -117,14 +117,16 @@ func execute() error {
 				}
 			} else {
 				logrus.Info("Taking generic snapshot now.")
-				contents, err = snapshotter.TakeSnapshot()
+				c, filesAdded, err := snapshotter.TakeSnapshot()
+				contents = c
 				if err != nil {
 					return err
 				}
-			}
-			if contents == nil {
-				logrus.Info("Contents are nil, continue.")
-				continue
+				if !filesAdded {
+					logrus.Info("No files were changed in this command, appending empty layer to config history.")
+					image.AppendEmptyLayerToConfigHistory("kbuild")
+					continue
+				}
 			}
 			if finalStage {
 				logrus.Info("Appending to source image")
