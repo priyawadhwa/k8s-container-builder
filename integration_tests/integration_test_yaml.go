@@ -28,19 +28,19 @@ var tests = []struct {
 	context        string
 	repo           string
 }{
-	{
-		description:    "test extract filesystem",
-		dockerfilePath: "/workspace/integration_tests/dockerfiles/Dockerfile_test_extract_fs",
-		configPath:     "/workspace/integration_tests/dockerfiles/config_test_extract_fs.json",
-		context:        "integration_tests/dockerfiles/",
-		repo:           "extract-filesystem",
-	},
+	// {
+	// 	description:    "test extract filesystem",
+	// 	dockerfilePath: "/workspace/integration_tests/dockerfiles/Dockerfile_test_extract_fs",
+	// 	configPath:     "/workspace/integration_tests/dockerfiles/config_test_extract_fs.json",
+	// 	context:        "integration_tests/dockerfiles/",
+	// 	repo:           "extract-filesystem",
+	// },
 	{
 		description:    "test run",
 		dockerfilePath: "/workspace/integration_tests/dockerfiles/Dockerfile_test_run",
 		configPath:     "/workspace/integration_tests/dockerfiles/config_test_run.json",
 		context:        "integration_tests/dockerfiles/",
-		repo:           "extract-filesystem",
+		repo:           "run-command",
 	},
 }
 
@@ -95,7 +95,7 @@ func main() {
 		var commitID = "test"
 		kbuild := step{
 			Name: dockerImage,
-			Args: []string{"run", "-v", test.dockerfilePath + ":/workspace/Dockerfile", "--name", commitID, executorImage, executorCommand},
+			Args: []string{"run", "-v", test.dockerfilePath + ":/workspace/Dockerfile", "--name", commitID, executorImage, executorCommand, "--verbosity=debug"},
 		}
 
 		commit := step{

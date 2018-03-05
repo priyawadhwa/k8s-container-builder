@@ -74,6 +74,7 @@ func SetEnvVariables() error {
 		if err := os.Setenv(key, val); err != nil {
 			return err
 		}
+		logrus.Debugf("Setting environment variable %s=%s", key, val)
 	}
 	return nil
 }
