@@ -24,6 +24,7 @@ import (
 	"github.com/containers/image/docker"
 	"github.com/sirupsen/logrus"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -120,10 +121,40 @@ func Files(root string) ([]string, error) {
 	return files, err
 }
 
+// FilesAndContents returns a map of filename:file contents for all files that stem from root
+// The filepath is relative to root
+func FilesAndContents(fp string, root string) (map[string][]byte, error) {
+	files := make(map[string][]byte)
+	logrus.Debugf("Getting files and contents at root %s", root)
+	err := filepath.Walk(fp, func(path string, info os.FileInfo, err error) error {
+		if info.IsDir() {
+			return err
+		}
+		logrus.Debugf("Reading file %s", path)
+		contents, e := ioutil.ReadFile(path)
+		if e != nil {
+			return e
+		}
+		relPath, e := filepath.Rel(root, path)
+		if e != nil {
+			return e
+		}
+		logrus.Debugf("Adding file %s to map of files", relPath)
+		files[relPath] = contents
+		return err
+	})
+	return files, err
+}
+
 // IsDir checks if path is a directory
 func IsDir(path string) (bool, error) {
 	f, err := os.Stat(path)
 	return f.IsDir(), err
+}
+
+func FilepathExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }
 
 func GetImageTar(from string) (string, error) {

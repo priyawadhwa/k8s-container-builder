@@ -16,14 +16,25 @@ limitations under the License.
 
 package dest
 
+import (
+	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/util"
+	"github.com/sirupsen/logrus"
+)
+
 type Context interface {
 	GetFilesFromSource(path string) (map[string][]byte, error)
 }
 
 func GetContext(source string) Context {
-	return GCSBucketContext{bucketName: source}
+	if util.FilepathExists(source) {
+		logrus.Infof("Using local directory context at path %s", source)
+		return &LocalDirectory{root: source}
+	}
+	logrus.Infof("Using GCS bucket %s as context", source)
+	return &GCSBucketContext{bucketName: source}
 }
 
+// GetTarContext returns a tar context
 func GetTarContext(source string) TarContext {
 	return TarContext{filePath: source}
 }

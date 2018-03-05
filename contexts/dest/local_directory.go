@@ -17,14 +17,21 @@ limitations under the License.
 package dest
 
 import (
-	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/storage"
+	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/util"
+	"path/filepath"
 )
 
-type GCSBucketContext struct {
-	bucketName string
+type LocalDirectory struct {
+	root string
 }
 
 // GetFilesFromSource gets the files at path from the GCS storage bucket
-func (b *GCSBucketContext) GetFilesFromSource(path string) (map[string][]byte, error) {
-	return storage.GetFilesFromStorageBucket(b.bucketName, path)
+func (ld *LocalDirectory) GetFilesFromSource(path string) (map[string][]byte, error) {
+	// If path is an empty string, return all files at root
+	if path == "" {
+		return util.FilesAndContents(ld.root, ld.root)
+	}
+	// Otherwise, return all files at filepath.Join(root, path)
+	fullPath := filepath.Join(ld.root, path)
+	return util.FilesAndContents(fullPath, ld.root)
 }
