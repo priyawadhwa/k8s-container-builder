@@ -17,6 +17,7 @@ limitations under the License.
 package cmd
 
 import (
+	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/commands"
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/constants"
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/dockerfile"
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/util"
@@ -68,5 +69,21 @@ func execute() error {
 
 	// Unpack file system to root
 	logrus.Infof("Unpacking filesystem of %s...", baseImage)
-	return util.ExtractFileSystemFromImage(baseImage)
+	if err := util.ExtractFileSystemFromImage(baseImage); err != nil {
+		return err
+	}
+
+	for _, stage := range stages {
+		for _, cmd := range stage.Commands {
+			dockerCommand := commands.GetCommand(cmd)
+			if dockerCommand == nil {
+				return nil
+			}
+			if err := dockerCommand.ExecuteCommand(); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }

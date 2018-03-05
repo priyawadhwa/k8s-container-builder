@@ -6,8 +6,12 @@
     "Diff": {
       "Adds": [
         {
+          "Name": "/etc/foo",
+          "Size": 16271436
+        },
+        {
           "Name": "/workspace",
-          "Size": 16280732
+          "Size": 16271436
         },
         {
           "Name": "/workspace/Dockerfile",
@@ -15,7 +19,7 @@
         },
         {
           "Name": "/workspace/executor",
-          "Size": 16280732
+          "Size": 16271436
         }
       ],
       "Dels": [

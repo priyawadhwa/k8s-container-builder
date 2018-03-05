@@ -35,6 +35,13 @@ var tests = []struct {
 		context:        "integration_tests/dockerfiles/",
 		repo:           "extract-filesystem",
 	},
+	{
+		description:    "test run",
+		dockerfilePath: "/workspace/integration_tests/dockerfiles/Dockerfile_test_run",
+		configPath:     "/workspace/integration_tests/dockerfiles/config_test_run.json",
+		context:        "integration_tests/dockerfiles/",
+		repo:           "extract-filesystem",
+	},
 }
 
 type step struct {
@@ -96,14 +103,19 @@ func main() {
 			Args: []string{"commit", commitID, testRepo + kbuildPrefix + test.repo},
 		}
 
-		dockerImage := daemonPrefix + testRepo + dockerPrefix + test.repo
-		kbuildImage := daemonPrefix + testRepo + kbuildPrefix + test.repo
+		dockerDaemonImage := daemonPrefix + testRepo + dockerPrefix + test.repo
+		kbuildDaemonImage := daemonPrefix + testRepo + kbuildPrefix + test.repo
 		// Run container diff on the images
-		args := "container-diff-linux-amd64 diff " + dockerImage + " " + kbuildImage + " --type=file -j > " + containerDiffOutputFile
+		args := "container-diff-linux-amd64 diff " + dockerDaemonImage + " " + kbuildDaemonImage + " --type=file -j > " + containerDiffOutputFile
 		containerDiff := step{
 			Name: ubuntuImage,
 			Args: []string{"sh", "-c", args},
 			Env:  []string{"PATH=/workspace:/bin"},
+		}
+
+		catStep := step{
+			Name: ubuntuImage,
+			Args: []string{"cat", containerDiffOutputFile},
 		}
 
 		// Compare output files
@@ -112,7 +124,11 @@ func main() {
 			Args: []string{"cmp", test.configPath, containerDiffOutputFile},
 		}
 
-		y.Steps = append(y.Steps, dockerBuild, kbuild, commit, containerDiff, compareOutputs)
+		removeTestContainer := step{
+			Name: dockerImage,
+			Args: []string{"rm", commitID},
+		}
+		y.Steps = append(y.Steps, dockerBuild, kbuild, commit, containerDiff, catStep, compareOutputs, removeTestContainer)
 	}
 
 	d, _ := yaml.Marshal(&y)
