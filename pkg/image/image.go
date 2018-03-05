@@ -24,6 +24,7 @@ import (
 	"github.com/containers/image/signature"
 	"github.com/containers/image/transports/alltransports"
 	"github.com/sirupsen/logrus"
+	"os"
 )
 
 // sourceImage is the image that will be modified by the executor
@@ -64,6 +65,17 @@ func PushImage(destImg string) error {
 	}
 	logrus.Infof("Pushing image to %s", destImg)
 	return copy.Image(policyContext, destRef, srcRef, nil)
+}
+
+// SetEnvVariables sets environment variables as specified in the image
+func SetEnvVariables() error {
+	envVars := sourceImage.Env()
+	for key, val := range envVars {
+		if err := os.Setenv(key, val); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func getPolicyContext() (*signature.PolicyContext, error) {

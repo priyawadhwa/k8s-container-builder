@@ -20,6 +20,7 @@ import (
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/commands"
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/constants"
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/dockerfile"
+	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/image"
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/util"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -73,6 +74,13 @@ func execute() error {
 		return err
 	}
 
+	// Initialize image
+	if err := image.InitializeSourceImage(baseImage); err != nil {
+		return err
+	}
+	if err := image.SetEnvVariables(); err != nil {
+		return err
+	}
 	for _, stage := range stages {
 		for _, cmd := range stage.Commands {
 			dockerCommand := commands.GetCommand(cmd)
@@ -82,6 +90,9 @@ func execute() error {
 			if err := dockerCommand.ExecuteCommand(); err != nil {
 				return err
 			}
+			// Now, we take a snapshot of the filesystem
+
+			// Then, append it to the image
 		}
 	}
 
