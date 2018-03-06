@@ -15,5 +15,5 @@
 # limitations under the License.
 
 make out/executor
-docker build -t gcr.io/priya-wadhwa/executor .
-docker push gcr.io/priya-wadhwa/executor
+docker build -t gcr.io/kbuild-project/executor .
+docker push gcr.io/kbuild-project/executor

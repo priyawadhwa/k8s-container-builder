@@ -15,8 +15,8 @@
 # Builds the static Go image to execute in a Kubernetes job
 FROM scratch
 ADD files/ca-certificates.crt /etc/ssl/certs/
-ADD ./out/executor /workspace/executor
-ADD files/policy.json /workspace/policy.json
-ADD files/docker-credential-gcr_linux_amd64-1.4.1.tar.gz /workspace/
+ADD ./out/executor /work-dir/executor
+ADD files/policy.json /work-dir/policy.json
+ADD files/docker-credential-gcr_linux_amd64-1.4.1.tar.gz /work-dir/
 ADD files/config.json /root/.docker/
-ADD test/Dockerfile /workspace/Dockerfile
+ADD test/Dockerfile /work-dir/Dockerfile

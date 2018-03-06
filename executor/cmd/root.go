@@ -115,6 +115,10 @@ func execute() error {
 				if err != nil {
 					return err
 				}
+				if contents == nil {
+					logrus.Info("Contents are empty, continue.")
+					continue
+				}
 			} else {
 				logrus.Info("Taking generic snapshot now.")
 				c, filesAdded, err := snapshotter.TakeSnapshot()
@@ -141,7 +145,12 @@ func execute() error {
 			continue
 		}
 		// Now package up filesystem as tarball
-		if err := util.SaveFileSystemAsTarball(stage.Name, index); err != nil {
+		tarballFiles, err := dockerfile.GetMultiStageDependencies(index, stage.Name, stages)
+		logrus.Infof("Saving these files from stage %v: %s", index, tarballFiles)
+		if err != nil {
+			return err
+		}
+		if err := util.SaveFilesToTarball(stage.Name, index, tarballFiles); err != nil {
 			return err
 		}
 		// Then, delete filesystem

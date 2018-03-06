@@ -18,6 +18,10 @@ package dockerfile
 
 import (
 	"bytes"
+	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/util"
+	"github.com/sirupsen/logrus"
+	"os"
+	"strconv"
 
 	"github.com/docker/docker/builder/dockerfile/instructions"
 	"github.com/docker/docker/builder/dockerfile/parser"
@@ -34,4 +38,61 @@ func Parse(b []byte) ([]instructions.Stage, error) {
 		return nil, err
 	}
 	return stages, err
+}
+
+// Return a list of dependencies in stage index used later on in the dockerfile
+func GetMultiStageDependencies(index int, name string, stages []instructions.Stage) ([]string, error) {
+
+	var files []string
+
+	for stageIndex, stage := range stages {
+		if stageIndex <= index {
+			continue
+		}
+		for _, cmd := range stage.Commands {
+			switch c := cmd.(type) {
+			case *instructions.CopyCommand:
+				logrus.Debug("copy")
+				logrus.Debug(c.From)
+				if c.From == strconv.Itoa(index) || c.From == name {
+					if containsWildcards(c.Sources()) {
+						//TODO : Fill this out
+					} else {
+						for _, src := range c.Sources() {
+							// Get all files from the source
+							f, err := util.Files(src)
+							if err != nil {
+								return nil, err
+							}
+							for _, file := range f {
+								fi, err := os.Stat(file)
+								if err != nil {
+									return nil, err
+								}
+								if fi.IsDir() {
+									continue
+								}
+								logrus.Infof("Appending %s", file)
+								files = append(files, file)
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	return files, nil
+}
+
+func containsWildcards(paths []string) bool {
+	for _, path := range paths {
+		for i := 0; i < len(path); i++ {
+			ch := path[i]
+			// These are the wildcards that correspond to filepath.Match
+			if ch == '*' || ch == '?' || ch == '[' {
+				return true
+			}
+		}
+	}
+	return false
 }

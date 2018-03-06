@@ -31,7 +31,7 @@ import (
 	"strings"
 )
 
-var whitelist = []string{"/workspace"}
+var whitelist = []string{"/work-dir"}
 
 func InitializeWhitelist() error {
 	whitelist, err := fileSystemWhitelist(constants.WhitelistPath)
@@ -183,13 +183,47 @@ func SaveFileSystemAsTarball(name string, index int) error {
 		if IgnoreFilepath(path, constants.RootDir) {
 			return nil
 		}
-		if strings.Contains(path, "pkg/foo") {
-			logrus.Infof("################# %s", path)
-		}
 		return AddToTar(path, info, w)
 	})
 	if err != nil {
 		return err
+	}
+
+	// Symlink
+	indexPath := filepath.Join(constants.WorkspaceDir, strconv.Itoa(index)+".tar")
+	if indexPath != tarPath {
+		logrus.Debugf("Symlinking from %s to %s", tarPath, indexPath)
+		return os.Symlink(tarPath, indexPath)
+	}
+	return nil
+}
+
+func SaveFilesToTarball(name string, index int, files []string) error {
+	tarPath := filepath.Join(constants.WorkspaceDir, name+".tar")
+	if name == "" {
+		tarPath = filepath.Join(constants.WorkspaceDir, strconv.Itoa(index)+".tar")
+	}
+	f, err := os.Create(tarPath)
+	logrus.Infof("Created tarball to save filesystem in at %s", tarPath)
+	defer f.Close()
+	if err != nil {
+		return err
+	}
+	w := tar.NewWriter(f)
+	defer w.Close()
+
+	for _, file := range files {
+		if IgnoreFilepath(file, constants.RootDir) {
+			continue
+		}
+		info, err := os.Stat(file)
+		if err != nil {
+			return err
+		}
+		if err := AddToTar(file, info, w); err != nil {
+			return err
+		}
+		logrus.Debugf("Saves file %s to tarball %s", file, tarPath)
 	}
 
 	// Symlink

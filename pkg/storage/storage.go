@@ -108,7 +108,7 @@ func listFilesInBucket(bucket *storage.BucketHandle, bucketName, path string) ([
 	if path == "" {
 		query = nil
 	}
-	logrus.Infof("Querying %s for %s", bucketName, path)
+	logrus.Infof("Querying %s for files", bucketName)
 	it := bucket.Objects(ctx, query)
 	var files []string
 	for {

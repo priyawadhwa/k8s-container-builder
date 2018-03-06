@@ -23,15 +23,17 @@ const (
 	RootDir = "/"
 
 	// WorkspaceDir is the path to the workspace
-	WorkspaceDir = "/workspace/"
+	WorkspaceDir = "/work-dir/"
 
 	WhitelistPath = "/proc/self/mountinfo"
+
+	PolicyJSONPath = "/work-dir/policy.json"
 
 	ConfigPath = "/root/.docker/config.json"
 )
 
 // DefaultEnvVariables are the default env variables set in the container
 var DefaultEnvVariables = map[string]string{
-	"PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root:/workspace",
+	"PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root:/work-dir",
 	"HOME": "/root",
 }

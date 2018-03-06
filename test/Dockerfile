@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM gcr.io/google-appengine/debian9:latest as first
-RUN echo "hey" > /etc/foo && echo "heyo" > /etc/foo2
-COPY pkg/*/*    pkg/ 
+FROM gcr.io/distroless/base:latest
+COPY context/f* /context/
 
-# FROM gcr.io/google-appengine/python
-# COPY pkg/*/* pkg/
-# COPY --from=0 /etc/foo /etc/foo
-# ENV hello hello
+FROM gcr.io/google-appengine/debian9:latest
+RUN apt-get update && apt-get install -y curl
+COPY --from=0 /context/ foo/

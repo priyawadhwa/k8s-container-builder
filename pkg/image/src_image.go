@@ -18,6 +18,7 @@ package image
 
 import (
 	img "github.com/GoogleCloudPlatform/container-diff/pkg/image"
+	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/constants"
 	"github.com/containers/image/docker"
 	"github.com/sirupsen/logrus"
 
@@ -82,7 +83,7 @@ func PushImage(destImg string) error {
 }
 
 func getPolicyContext() (*signature.PolicyContext, error) {
-	policy, err := signature.NewPolicyFromFile("/workspace/policy.json")
+	policy, err := signature.NewPolicyFromFile(constants.PolicyJSONPath)
 	if err != nil {
 		logrus.Debugf("Error retrieving policy: %s", err)
 		return nil, err
