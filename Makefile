@@ -25,10 +25,13 @@ REGISTRY?=gcr.io/kbuild-project
 GOARCH = amd64
 ORG := github.com/GoogleCloudPlatform
 PROJECT := k8s-container-builder
+REGISTRY?=gcr.io/kbuild-project
 
 REPOPATH ?= $(ORG)/$(PROJECT)
 
 GO_FILES := $(shell find . -type f -name '*.go' -not -path "./vendor/*")
+GO_LDFLAGS := '-extldflags "-static"'
+GO_BUILD_TAGS := "containers_image_ostree_stub containers_image_openpgp exclude_graphdriver_devicemapper exclude_graphdriver_btrfs"
 
 # These build tags are from the containers/image library.
 # 

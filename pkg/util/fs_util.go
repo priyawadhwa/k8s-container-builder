@@ -52,6 +52,17 @@ func ExtractFileSystemFromImage(img string) error {
 	return pkgutil.GetFileSystemFromReference(ref, imgSrc, constants.RootDir, whitelist)
 }
 
+// PathInWhitelist returns true if the path is whitelisted
+func PathInWhitelist(path, directory string) bool {
+	for _, d := range whitelist {
+		dirPath := filepath.Join(directory, d)
+		if pkgutil.HasFilepathPrefix(path, dirPath) {
+			return true
+		}
+	}
+	return false
+}
+
 // Get whitelist from roots of mounted files
 // Each line of /proc/self/mountinfo is in the form:
 // 36 35 98:0 /mnt1 /mnt2 rw,noatime master:1 - ext3 /dev/root rw,errors=continue

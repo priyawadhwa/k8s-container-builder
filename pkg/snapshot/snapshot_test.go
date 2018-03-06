@@ -37,29 +37,37 @@ func TestSnapshotFileChange(t *testing.T) {
 	}
 	// Make some changes to the filesystem
 	newFiles := map[string]string{
-		"foo":           "newbaz1",
-		"workspace/bat": "bat",
+		"foo":          "newbaz1",
+		"bar/bat":      "baz",
+		"work-dir/bat": "bat",
 	}
 	if err := testutil.SetupFiles(testDir, newFiles); err != nil {
 		t.Fatalf("Error setting up fs: %s", err)
 	}
 	// Take another snapshot
-	contents, _, err := snapshotter.TakeSnapshot()
+	contents, filesAdded, err := snapshotter.TakeSnapshot()
 	if err != nil {
 		t.Fatalf("Error taking snapshot of fs: %s", err)
+	}
+	if !filesAdded {
+		t.Fatal("No files added to snapshot.")
 	}
 	// Check contents of the snapshot, make sure contents is equivalent to snapshotFiles
 	reader := bytes.NewReader(contents)
 	tr := tar.NewReader(reader)
 	fooPath := filepath.Join(testDir, "foo")
+	batPath := filepath.Join(testDir, "bar/bat")
 	snapshotFiles := map[string]string{
 		fooPath: "newbaz1",
+		batPath: "baz",
 	}
+	numFiles := 0
 	for {
 		hdr, err := tr.Next()
 		if err == io.EOF {
 			break
 		}
+		numFiles++
 		if _, isFile := snapshotFiles[hdr.Name]; !isFile {
 			t.Fatalf("File %s unexpectedly in tar", hdr.Name)
 		}
@@ -67,6 +75,9 @@ func TestSnapshotFileChange(t *testing.T) {
 		if string(contents) != snapshotFiles[hdr.Name] {
 			t.Fatalf("Contents of %s incorrect, expected: %s, actual: %s", hdr.Name, snapshotFiles[hdr.Name], string(contents))
 		}
+	}
+	if numFiles != 2 {
+		t.Fatalf("Incorrect number of files were added, expected: 2, actual: %v", numFiles)
 	}
 }
 
@@ -82,9 +93,12 @@ func TestSnapshotChangePermissions(t *testing.T) {
 		t.Fatalf("Error changing permissions on %s: %v", batPath, err)
 	}
 	// Take another snapshot
-	contents, _, err := snapshotter.TakeSnapshot()
+	contents, filesAdded, err := snapshotter.TakeSnapshot()
 	if err != nil {
 		t.Fatalf("Error taking snapshot of fs: %s", err)
+	}
+	if !filesAdded {
+		t.Fatal("No files added to snapshot.")
 	}
 	// Check contents of the snapshot, make sure contents is equivalent to snapshotFiles
 	reader := bytes.NewReader(contents)
@@ -92,13 +106,13 @@ func TestSnapshotChangePermissions(t *testing.T) {
 	snapshotFiles := map[string]string{
 		batPath: "baz2",
 	}
-	num := 0
+	numFiles := 0
 	for {
 		hdr, err := tr.Next()
 		if err == io.EOF {
 			break
 		}
-		num = num + 1
+		numFiles++
 		if _, isFile := snapshotFiles[hdr.Name]; !isFile {
 			t.Fatalf("File %s unexpectedly in tar", hdr.Name)
 		}
@@ -107,9 +121,56 @@ func TestSnapshotChangePermissions(t *testing.T) {
 			t.Fatalf("Contents of %s incorrect, expected: %s, actual: %s", hdr.Name, snapshotFiles[hdr.Name], string(contents))
 		}
 	}
+	if numFiles != 1 {
+		t.Fatalf("Incorrect number of files were added, expected: 1, got: %v", numFiles)
+	}
+}
 
-	if num != 1 {
-		t.Fatalf("One file was not added.")
+func TestSnapshotFiles(t *testing.T) {
+	testDir, snapshotter, err := setUpTestDir()
+	defer os.RemoveAll(testDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Make some changes to the filesystem
+	newFiles := map[string]string{
+		"foo":           "newbaz1",
+		"work-dir/file": "bat",
+	}
+	if err := testutil.SetupFiles(testDir, newFiles); err != nil {
+		t.Fatalf("Error setting up fs: %s", err)
+	}
+	filesToSnapshot := []string{
+		filepath.Join(testDir, "foo"),
+		filepath.Join(testDir, "work-dir/file"),
+	}
+	contents, err := snapshotter.TakeSnapshotOfFiles(filesToSnapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expectedContents := map[string]string{
+		filepath.Join(testDir, "foo"): "newbaz1",
+	}
+	// Check contents of the snapshot, make sure contents is equivalent to snapshotFiles
+	reader := bytes.NewReader(contents)
+	tr := tar.NewReader(reader)
+	numFiles := 0
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		numFiles = numFiles + 1
+		if _, isFile := expectedContents[hdr.Name]; !isFile {
+			t.Fatalf("File %s unexpectedly in tar", hdr.Name)
+		}
+		contents, _ := ioutil.ReadAll(tr)
+		if string(contents) != expectedContents[hdr.Name] {
+			t.Fatalf("Contents of %s incorrect, expected: %s, actual: %s", hdr.Name, expectedContents[hdr.Name], string(contents))
+		}
+	}
+	if numFiles != 1 {
+		t.Fatalf("%s was not added.", filepath.Join(testDir, "foo"))
 	}
 }
 
@@ -126,46 +187,7 @@ func TestEmptySnapshot(t *testing.T) {
 	}
 	// Since we took a snapshot with no changes, contents should be nil
 	if filesAdded {
-		t.Fatal("Files were added even though no changes were made to filesystem.")
-	}
-}
-
-func TestSnapshotFiles(t *testing.T) {
-	testDir, snapshotter, err := setUpTestDir()
-	defer os.RemoveAll(testDir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	filesToSnapshot := []string{
-		filepath.Join(testDir, "foo"),
-	}
-	contents, err := snapshotter.TakeSnapshotOfFiles(filesToSnapshot)
-	if err != nil {
-		t.Fatal(err)
-	}
-	expectedContents := map[string]string{
-		filepath.Join(testDir, "foo"): "baz1",
-	}
-	// Check contents of the snapshot, make sure contents is equivalent to snapshotFiles
-	reader := bytes.NewReader(contents)
-	tr := tar.NewReader(reader)
-	num := 0
-	for {
-		hdr, err := tr.Next()
-		if err == io.EOF {
-			break
-		}
-		num = num + 1
-		if _, isFile := expectedContents[hdr.Name]; !isFile {
-			t.Fatalf("File %s unexpectedly in tar", hdr.Name)
-		}
-		contents, _ := ioutil.ReadAll(tr)
-		if string(contents) != expectedContents[hdr.Name] {
-			t.Fatalf("Contents of %s incorrect, expected: %s, actual: %s", hdr.Name, expectedContents[hdr.Name], string(contents))
-		}
-	}
-	if num != 1 {
-		t.Fatalf("%s was not added.", filepath.Join(testDir, "foo"))
+		t.Fatal("Files added even though no changes to file system were made.")
 	}
 }
 
@@ -175,9 +197,9 @@ func setUpTestDir() (string, *Snapshotter, error) {
 		return testDir, nil, errors.Wrap(err, "setting up temp dir")
 	}
 	files := map[string]string{
-		"foo":            "baz1",
-		"bar/bat":        "baz2",
-		"workspace/file": "file",
+		"foo":           "baz1",
+		"bar/bat":       "baz2",
+		"work-dir/file": "file",
 	}
 	// Set up initial files
 	if err := testutil.SetupFiles(testDir, files); err != nil {

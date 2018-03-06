@@ -62,8 +62,11 @@ func (s *Snapshotter) TakeSnapshot() ([]byte, bool, error) {
 	return contents, filesAdded, err
 }
 
+// TakeSnapshotOfFiles takes a snapshot of specific files
+// Used for ADD/COPY commands, when we know which files have changed
 func (s *Snapshotter) TakeSnapshotOfFiles(files []string) ([]byte, error) {
 	logrus.Infof("Taking snapshot of files %s", files)
+	s.l.Snapshot()
 	if len(files) == 0 {
 		logrus.Info("No files changed in this command, skipping snapshotting.")
 		return nil, nil
@@ -76,20 +79,20 @@ func (s *Snapshotter) TakeSnapshotOfFiles(files []string) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		if util.IgnoreFilepath(file, s.directory) {
+		if util.PathInWhitelist(file, s.directory) {
+			logrus.Debugf("Not adding %s to layer, as it is whitelisted", file)
 			continue
 		}
-		util.AddToTar(file, info, w)
-	}
-	var contents []byte
-	for {
-		next := buf.Next(buf.Len())
-		if len(next) == 0 {
-			break
+		// Only add to the tar if we add it to the layeredmap.
+		maybeAdd, err := s.l.MaybeAdd(file)
+		if err != nil {
+			return nil, err
 		}
-		contents = append(contents, next...)
+		if maybeAdd {
+			util.AddToTar(file, info, w)
+		}
 	}
-	return contents, nil
+	return ioutil.ReadAll(buf)
 }
 
 func (s *Snapshotter) snapShotFS(f io.Writer) (bool, error) {
@@ -99,12 +102,17 @@ func (s *Snapshotter) snapShotFS(f io.Writer) (bool, error) {
 	defer w.Close()
 
 	err := filepath.Walk(s.directory, func(path string, info os.FileInfo, err error) error {
-		if util.IgnoreFilepath(path, s.directory) {
+		if util.PathInWhitelist(path, s.directory) {
+			logrus.Debugf("Not adding %s to layer, as it's whitelisted", path)
 			return nil
 		}
 
 		// Only add to the tar if we add it to the layeredmap.
-		if s.l.MaybeAdd(path) {
+		maybeAdd, err := s.l.MaybeAdd(path)
+		if err != nil {
+			return err
+		}
+		if maybeAdd {
 			filesAdded = true
 			return util.AddToTar(path, info, w)
 		}
