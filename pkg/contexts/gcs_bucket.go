@@ -17,20 +17,14 @@ limitations under the License.
 package contexts
 
 import (
-	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/util"
-	"github.com/sirupsen/logrus"
+	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/storage"
 )
 
-type Context interface {
-	// Returns a map of [file path]:[file contents] of all files rooted at path
-	GetFilesFromPath(path string) (map[string][]byte, error)
+type GCSBucketContext struct {
+	bucketName string
 }
 
-func GetContext(source string) Context {
-	if util.FilepathExists(source) {
-		logrus.Infof("Using local directory context at path %s", source)
-		return &LocalDirectory{root: source}
-	}
-	logrus.Infof("Using GCS bucket %s as context", source)
-	return &GCSBucketContext{bucketName: source}
+// GetFilesFromSource gets the files at path from the GCS storage bucket
+func (b *GCSBucketContext) GetFilesFromPath(path string) (map[string][]byte, error) {
+	return storage.GetFilesFromStorageBucket(b.bucketName, path)
 }
