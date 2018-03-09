@@ -17,26 +17,27 @@ limitations under the License.
 package commands
 
 import (
-	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/contexts"
+	"github.com/containers/image/manifest"
 	"github.com/docker/docker/builder/dockerfile/instructions"
-	"github.com/sirupsen/logrus"
+	"github.com/pkg/errors"
 )
 
 type DockerCommand interface {
-	ExecuteCommand() error
-	// The config file has an "author" field, should return information about the command
-	Author() string
+	// ExecuteCommand is responsible for:
+	// 	1. Making required changes to the filesystem (ex. copying files for ADD/COPY or setting ENV variables)
+	//  2. Updating metadata fields in the config
+	// It should not change the config history.
+	ExecuteCommand(*manifest.Schema2Config) error
+	// The config history has a "created by" field, should return information about the command
+	CreatedBy() string
 	// A list of files to snapshot, empty for metadata commands or nil if we don't know
 	FilesToSnapshot() []string
 }
 
-func GetCommand(cmd instructions.Command, context contexts.Context) DockerCommand {
+func GetCommand(cmd instructions.Command) (DockerCommand, error) {
 	switch c := cmd.(type) {
 	case *instructions.RunCommand:
-		return &RunCommand{cmd: c}
-	case *instructions.CopyCommand:
-		return &CopyCommand{cmd: c, context: context}
+		return &RunCommand{cmd: c}, nil
 	}
-	logrus.Errorf("%s is not a supported command.", cmd.Name())
-	return nil
+	return nil, errors.Errorf("%s is not a supported command", cmd.Name())
 }
