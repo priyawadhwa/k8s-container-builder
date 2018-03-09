@@ -128,3 +128,100 @@ func Test_FilesAndContents(t *testing.T) {
 		testutil.CheckErrorAndDeepEqual(t, false, err, test.expectedMap, fileMap)
 	}
 }
+
+var testCases = []struct {
+	name   string
+	srcs   []string
+	files  map[string][]byte
+	output map[string][]string
+}{
+	{
+		name: "multiple sources",
+		srcs: []string{
+			"pkg/*",
+			"dir/a*.go",
+		},
+		files: map[string][]byte{
+			"pkg/a":         nil,
+			"pkg/b/c":       nil,
+			"test":          nil,
+			"dir/apple.go":  nil,
+			"dir/banana.go": nil,
+		},
+		output: map[string][]string{
+			"pkg/*": {
+				"pkg/a",
+			},
+			"dir/a*.go": {
+				"dir/apple.go",
+			},
+		},
+	},
+	{
+		name: "wildcard and normal srcs",
+		srcs: []string{
+			"pkg/*",
+			"dir/a*.go",
+			"pkg/",
+		},
+		files: map[string][]byte{
+			"pkg/a":         nil,
+			"pkg/b/c":       nil,
+			"test":          nil,
+			"dir/apple.go":  nil,
+			"dir/banana.go": nil,
+		},
+		output: map[string][]string{
+			"pkg/*": {
+				"pkg/a",
+			},
+			"dir/a*.go": {
+				"dir/apple.go",
+			},
+			"pkg": {
+				"pkg/a",
+				"pkg/b/c",
+			},
+		},
+	},
+	{
+		name: "no match",
+		srcs: []string{
+			"pkg/*",
+			"test/",
+		},
+		files: map[string][]byte{
+			"pkg/a": nil,
+		},
+		output: map[string][]string{
+			"pkg/*": {
+				"pkg/a",
+			},
+			"test": {},
+		},
+	},
+	{
+		name: "one file",
+		srcs: []string{
+			"pkg/*",
+		},
+		files: map[string][]byte{
+			"/pkg/a": nil,
+		},
+		output: map[string][]string{
+			"pkg/*": {
+				"/pkg/a",
+			},
+		},
+	},
+}
+
+func TestCopy_getMatchedFiles(t *testing.T) {
+	for _, tc := range testCases {
+		output, err := GetMatchedFiles(tc.srcs, tc.files)
+		for _, value := range output {
+			sort.Strings(value)
+		}
+		testutil.CheckErrorAndDeepEqual(t, false, err, tc.output, output)
+	}
+}

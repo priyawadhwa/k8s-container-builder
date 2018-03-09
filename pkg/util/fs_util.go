@@ -132,3 +132,49 @@ func FilepathExists(path string) bool {
 	_, err := os.Stat(path)
 	return (err == nil)
 }
+
+// CreateFile creates a file at path with contents specified
+func CreateFile(path string, contents []byte) error {
+	// Create directory path if it doesn't exist
+	baseDir := filepath.Dir(path)
+	if _, err := os.Stat(baseDir); os.IsNotExist(err) {
+		logrus.Debugf("baseDir %s for file %s does not exist. Creating.", baseDir, path)
+		if err := os.MkdirAll(baseDir, 0755); err != nil {
+			return err
+		}
+	}
+
+	f, err := os.Create(path)
+	defer f.Close()
+	if err != nil {
+		return err
+	}
+	_, err = f.Write(contents)
+	return err
+}
+
+// GetMatchedFiles returns a map of [src]:[matching filenames], used to resolve wildcards
+func GetMatchedFiles(srcs []string, files map[string][]byte) (map[string][]string, error) {
+	f := make(map[string][]string)
+	for _, src := range srcs {
+		src = filepath.Clean(src)
+		matchedFiles := []string{}
+		for file := range files {
+			matched, err := filepath.Match(src, file)
+			if err != nil {
+				return nil, err
+			}
+			matchedRoot, err := filepath.Match(filepath.Join(constants.RootDir, src), file)
+			if err != nil {
+				return nil, err
+			}
+			keep := matched || matchedRoot || pkgutil.HasFilepathPrefix(file, src)
+			if !keep {
+				continue
+			}
+			matchedFiles = append(matchedFiles, file)
+		}
+		f[src] = matchedFiles
+	}
+	return f, nil
+}

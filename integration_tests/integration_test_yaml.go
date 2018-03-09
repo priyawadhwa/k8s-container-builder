@@ -28,26 +28,33 @@ var tests = []struct {
 	context        string
 	repo           string
 }{
+	// {
+	// 	description:    "test extract filesystem",
+	// 	dockerfilePath: "/workspace/integration_tests/dockerfiles/Dockerfile_test_extract_fs",
+	// 	configPath:     "/workspace/integration_tests/dockerfiles/config_test_extract_fs.json",
+	// 	context:        "integration_tests/dockerfiles/",
+	// 	repo:           "extract-filesystem",
+	// },
+	// {
+	// 	description:    "test run",
+	// 	dockerfilePath: "/workspace/integration_tests/dockerfiles/Dockerfile_test_run",
+	// 	configPath:     "/workspace/integration_tests/dockerfiles/config_test_run.json",
+	// 	context:        "integration_tests/dockerfiles/",
+	// 	repo:           "test-run",
+	// },
+	// {
+	// 	description:    "test run no files changed",
+	// 	dockerfilePath: "/workspace/integration_tests/dockerfiles/Dockerfile_test_run_2",
+	// 	configPath:     "/workspace/integration_tests/dockerfiles/config_test_run_2.json",
+	// 	context:        "integration_tests/dockerfiles/",
+	// 	repo:           "test-run-2",
+	// },
 	{
-		description:    "test extract filesystem",
-		dockerfilePath: "/workspace/integration_tests/dockerfiles/Dockerfile_test_extract_fs",
-		configPath:     "/workspace/integration_tests/dockerfiles/config_test_extract_fs.json",
-		context:        "integration_tests/dockerfiles/",
-		repo:           "extract-filesystem",
-	},
-	{
-		description:    "test run",
-		dockerfilePath: "/workspace/integration_tests/dockerfiles/Dockerfile_test_run",
-		configPath:     "/workspace/integration_tests/dockerfiles/config_test_run.json",
-		context:        "integration_tests/dockerfiles/",
-		repo:           "test-run",
-	},
-	{
-		description:    "test run no files changed",
-		dockerfilePath: "/workspace/integration_tests/dockerfiles/Dockerfile_test_run_2",
-		configPath:     "/workspace/integration_tests/dockerfiles/config_test_run_2.json",
-		context:        "integration_tests/dockerfiles/",
-		repo:           "test-run-2",
+		description:    "test copy",
+		dockerfilePath: "/workspace/integration_tests/dockerfiles/Dockerfile_test_copy",
+		configPath:     "/workspace/integration_tests/dockerfiles/config_test_copy.json",
+		context:        "integration_tests/",
+		repo:           "test-copy",
 	},
 }
 

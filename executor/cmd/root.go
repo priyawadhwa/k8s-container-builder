@@ -19,6 +19,7 @@ package cmd
 import (
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/commands"
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/constants"
+	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/contexts"
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/dockerfile"
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/image"
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/snapshot"
@@ -95,10 +96,13 @@ func execute() error {
 		return err
 	}
 
+	// Get context
+	context := contexts.GetContext(srcContext)
+
 	// Currently only supports single stage builds
 	for _, stage := range stages {
 		for _, cmd := range stage.Commands {
-			dockerCommand := commands.GetCommand(cmd)
+			dockerCommand := commands.GetCommand(cmd, context)
 			if dockerCommand == nil {
 				return errors.Errorf("Invalid or unsupported docker command: %v", cmd)
 			}

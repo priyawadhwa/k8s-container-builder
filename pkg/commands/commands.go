@@ -17,6 +17,7 @@ limitations under the License.
 package commands
 
 import (
+	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/contexts"
 	"github.com/docker/docker/builder/dockerfile/instructions"
 	"github.com/sirupsen/logrus"
 )
@@ -29,10 +30,12 @@ type DockerCommand interface {
 	FilesToSnapshot() []string
 }
 
-func GetCommand(cmd instructions.Command) DockerCommand {
+func GetCommand(cmd instructions.Command, context contexts.Context) DockerCommand {
 	switch c := cmd.(type) {
 	case *instructions.RunCommand:
 		return &RunCommand{cmd: c}
+	case *instructions.CopyCommand:
+		return &CopyCommand{cmd: c, context: context}
 	}
 	logrus.Errorf("%s is not a supported command.", cmd.Name())
 	return nil
