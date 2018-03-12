@@ -20,11 +20,14 @@ import (
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/util"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"os"
 )
 
 type BuildContext interface {
-	// Returns a map of [file path]:[file contents] of all files rooted at path
-	GetFilesFromPath(path string) (map[string][]byte, error)
+	Files(path string) ([]string, error)
+	Exists(path string) bool
+	Stat(path string) os.FileInfo
+	Contents(path string) []byte
 }
 
 func GetBuildContext(source string) (BuildContext, error) {

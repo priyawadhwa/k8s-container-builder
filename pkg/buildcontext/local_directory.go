@@ -18,13 +18,28 @@ package buildcontext
 
 import (
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/util"
+	"io/ioutil"
+	"os"
 )
 
 type LocalDirectory struct {
 	root string
 }
 
-// GetFilesFromSource returns a map of [file name]:[file contents] at path
-func (ld *LocalDirectory) GetFilesFromPath(path string) (map[string][]byte, error) {
-	return util.FilesAndContents(path, ld.root)
+func (ld *LocalDirectory) Files(path string) ([]string, error) {
+	return util.Files(path, ld.root)
+}
+
+func (ld *LocalDirectory) Exists(path string) bool {
+	return util.FilepathExists(path)
+}
+
+func (ld *LocalDirectory) Stat(path string) os.FileInfo {
+	fi, _ := os.Stat(path)
+	return fi
+}
+
+func (ld *LocalDirectory) Contents(path string) []byte {
+	contents, _ := ioutil.ReadFile(path)
+	return contents
 }
