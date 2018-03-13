@@ -14,19 +14,20 @@ limitations under the License.
 package commands
 
 import (
+	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/buildcontext"
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/constants"
-	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/contexts"
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/util"
 	"github.com/docker/docker/builder/dockerfile/instructions"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"os"
 	"path/filepath"
 	"strings"
 )
 
 type CopyCommand struct {
 	cmd           *instructions.CopyCommand
-	context       contexts.Context
+	buildcontext  buildcontext.BuildContext
 	snapshotFiles []string
 }
 
@@ -38,7 +39,8 @@ func (c *CopyCommand) ExecuteCommand() error {
 	logrus.Infof("dest: %s", dest)
 
 	if util.ContainsWildcards(srcs) {
-		return c.executeWithWildcards()
+		return nil
+		// return c.executeWithWildcards()
 	}
 
 	// If there are multiple sources, the destination must be a directory
@@ -52,11 +54,11 @@ func (c *CopyCommand) ExecuteCommand() error {
 	// Otherwise, go through each src, and copy over the files into dest
 	for _, src := range srcs {
 		src = filepath.Clean(src)
-		files, err := c.context.GetFilesFromPath(src)
+		files, err := c.buildcontext.Files(src)
 		if err != nil {
 			return err
 		}
-		for file, contents := range files {
+		for _, file := range files {
 			relPath, err := filepath.Rel(src, file)
 			if err != nil {
 				return err
@@ -65,6 +67,21 @@ func (c *CopyCommand) ExecuteCommand() error {
 				relPath = filepath.Base(file)
 			}
 			destPath := filepath.Join(dest, relPath)
+			if c.buildcontext.Exists(file) {
+				fi := c.buildcontext.Stat(file)
+				if fi.IsDir() {
+					os.MkdirAll(destPath, fi.Mode())
+				} else {
+
+				}
+			}
+			relPath, err := filepath.Rel(src, file)
+			if err != nil {
+				return err
+			}
+			if relPath == "." {
+				relPath = filepath.Base(file)
+			}
 			logrus.Infof("Copying from %s to %s", file, destPath)
 			err = util.CreateFile(destPath, contents)
 			if err != nil {
@@ -76,37 +93,37 @@ func (c *CopyCommand) ExecuteCommand() error {
 	return nil
 }
 
-func (c *CopyCommand) executeWithWildcards() error {
-	srcs := c.cmd.SourcesAndDest[:len(c.cmd.SourcesAndDest)-1]
-	dest := c.cmd.SourcesAndDest[len(c.cmd.SourcesAndDest)-1]
+// func (c *CopyCommand) executeWithWildcards() error {
+// 	srcs := c.cmd.SourcesAndDest[:len(c.cmd.SourcesAndDest)-1]
+// 	dest := c.cmd.SourcesAndDest[len(c.cmd.SourcesAndDest)-1]
 
-	if !IsDir(dest) {
-		return c.CopySingleFile("", dest, srcs)
-	}
-	// Otherwise, destination is a directory, and we copy over all matched files
-	// Get all files from the source, since each needs to be matched against wildcards
-	files, err := c.context.GetFilesFromPath("")
-	if err != nil {
-		return err
-	}
-	matchedFiles, err := util.GetMatchedFiles(srcs, files)
-	logrus.Info(matchedFiles)
-	if err != nil {
-		return err
-	}
-	for _, srcFiles := range matchedFiles {
-		for _, file := range srcFiles {
-			// Join destination and filename to create final path for the file
-			destPath := filepath.Join(dest, filepath.Base(file))
-			err = util.CreateFile(destPath, files[file])
-			if err != nil {
-				return err
-			}
-			c.snapshotFiles = append(c.snapshotFiles, destPath)
-		}
-	}
-	return nil
-}
+// 	if !IsDir(dest) {
+// 		return c.CopySingleFile("", dest, srcs)
+// 	}
+// 	// Otherwise, destination is a directory, and we copy over all matched files
+// 	// Get all files from the source, since each needs to be matched against wildcards
+// 	files, err := c.buildcontext.GetFilesFromPath("")
+// 	if err != nil {
+// 		return err
+// 	}
+// 	matchedFiles, err := util.GetMatchedFiles(srcs, files)
+// 	logrus.Info(matchedFiles)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	for _, srcFiles := range matchedFiles {
+// 		for _, file := range srcFiles {
+// 			// Join destination and filename to create final path for the file
+// 			destPath := filepath.Join(dest, filepath.Base(file))
+// 			err = util.CreateFile(destPath, files[file])
+// 			if err != nil {
+// 				return err
+// 			}
+// 			c.snapshotFiles = append(c.snapshotFiles, destPath)
+// 		}
+// 	}
+// 	return nil
+// }
 
 // FilesToSnapshot returns nil for this command because we don't know which files
 // have changed, so we snapshot the entire system.
@@ -125,7 +142,7 @@ func IsDir(path string) bool {
 
 func (c *CopyCommand) CopySingleFile(path, dest string, srcs []string) error {
 	path = filepath.Clean(path)
-	files, err := c.context.GetFilesFromPath(path)
+	files, err := c.buildcontext.GetFilesFromPath(path)
 	if err != nil {
 		return err
 	}
