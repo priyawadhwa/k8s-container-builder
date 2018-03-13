@@ -18,8 +18,10 @@ package buildcontext
 
 import (
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/util"
+	"github.com/sirupsen/logrus"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 )
 
 type LocalDirectory struct {
@@ -27,19 +29,23 @@ type LocalDirectory struct {
 }
 
 func (ld *LocalDirectory) Files(path string) ([]string, error) {
+	logrus.Info(ld.root)
 	return util.Files(path, ld.root)
 }
 
 func (ld *LocalDirectory) Exists(path string) bool {
-	return util.FilepathExists(path)
+	fullPath := filepath.Join(ld.root, path)
+	return util.FilepathExists(fullPath)
 }
 
 func (ld *LocalDirectory) Stat(path string) os.FileInfo {
-	fi, _ := os.Stat(path)
+	fullPath := filepath.Join(ld.root, path)
+	fi, _ := os.Stat(fullPath)
 	return fi
 }
 
 func (ld *LocalDirectory) Contents(path string) []byte {
-	contents, _ := ioutil.ReadFile(path)
+	fullPath := filepath.Join(ld.root, path)
+	contents, _ := ioutil.ReadFile(fullPath)
 	return contents
 }

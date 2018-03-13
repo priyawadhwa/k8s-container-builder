@@ -134,7 +134,7 @@ func Test_Files(t *testing.T) {
 var testCases = []struct {
 	name   string
 	srcs   []string
-	files  map[string][]byte
+	files  []string
 	output map[string][]string
 }{
 	{
@@ -143,12 +143,12 @@ var testCases = []struct {
 			"pkg/*",
 			"dir/a*.go",
 		},
-		files: map[string][]byte{
-			"pkg/a":         nil,
-			"pkg/b/c":       nil,
-			"test":          nil,
-			"dir/apple.go":  nil,
-			"dir/banana.go": nil,
+		files: []string{
+			"pkg/a",
+			"pkg/b/c",
+			"test",
+			"dir/apple.go",
+			"dir/banana.go",
 		},
 		output: map[string][]string{
 			"pkg/*": {
@@ -166,12 +166,12 @@ var testCases = []struct {
 			"dir/a*.go",
 			"pkg/",
 		},
-		files: map[string][]byte{
-			"pkg/a":         nil,
-			"pkg/b/c":       nil,
-			"test":          nil,
-			"dir/apple.go":  nil,
-			"dir/banana.go": nil,
+		files: []string{
+			"pkg/a",
+			"pkg/b/c",
+			"test",
+			"dir/apple.go",
+			"dir/banana.go",
 		},
 		output: map[string][]string{
 			"pkg/*": {
@@ -192,8 +192,8 @@ var testCases = []struct {
 			"pkg/*",
 			"test/",
 		},
-		files: map[string][]byte{
-			"pkg/a": nil,
+		files: []string{
+			"pkg/a",
 		},
 		output: map[string][]string{
 			"pkg/*": {
@@ -207,8 +207,8 @@ var testCases = []struct {
 		srcs: []string{
 			"pkg/*",
 		},
-		files: map[string][]byte{
-			"/pkg/a": nil,
+		files: []string{
+			"/pkg/a",
 		},
 		output: map[string][]string{
 			"pkg/*": {

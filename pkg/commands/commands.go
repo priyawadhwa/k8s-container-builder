@@ -17,6 +17,7 @@ limitations under the License.
 package commands
 
 import (
+	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/buildcontext"
 	"github.com/containers/image/manifest"
 	"github.com/docker/docker/builder/dockerfile/instructions"
 	"github.com/pkg/errors"
@@ -34,10 +35,12 @@ type DockerCommand interface {
 	FilesToSnapshot() []string
 }
 
-func GetCommand(cmd instructions.Command) (DockerCommand, error) {
+func GetCommand(cmd instructions.Command, buildcontext buildcontext.BuildContext) (DockerCommand, error) {
 	switch c := cmd.(type) {
 	case *instructions.RunCommand:
 		return &RunCommand{cmd: c}, nil
+	case *instructions.CopyCommand:
+		return &CopyCommand{cmd: c, buildcontext: buildcontext}, nil
 	}
 	return nil, errors.Errorf("%s is not a supported command", cmd.Name())
 }

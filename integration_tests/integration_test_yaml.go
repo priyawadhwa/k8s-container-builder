@@ -53,7 +53,7 @@ var tests = []struct {
 		description:    "test copy",
 		dockerfilePath: "/workspace/integration_tests/dockerfiles/Dockerfile_test_copy",
 		configPath:     "/workspace/integration_tests/dockerfiles/config_test_copy.json",
-		context:        "integration_tests/",
+		context:        "/workspace/integration_tests/",
 		repo:           "test-copy",
 	},
 }
@@ -109,7 +109,7 @@ func main() {
 		kbuildImage := testRepo + kbuildPrefix + test.repo
 		kbuild := step{
 			Name: executorImage,
-			Args: []string{executorCommand, "--destination", kbuildImage, "--dockerfile", test.dockerfilePath},
+			Args: []string{executorCommand, "--destination", kbuildImage, "--dockerfile", test.dockerfilePath, "--context", test.context},
 		}
 
 		// Pull the kbuild image

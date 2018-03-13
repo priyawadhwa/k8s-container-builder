@@ -1,9 +1,12 @@
 /*
 Copyright 2018 Google LLC
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,6 +20,7 @@ import (
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/buildcontext"
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/constants"
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/util"
+	"github.com/containers/image/manifest"
 	"github.com/docker/docker/builder/dockerfile/instructions"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -31,12 +35,15 @@ type CopyCommand struct {
 	snapshotFiles []string
 }
 
-func (c *CopyCommand) ExecuteCommand() error {
+func (c *CopyCommand) ExecuteCommand(config *manifest.Schema2Config) error {
 	srcs := c.cmd.SourcesAndDest[:len(c.cmd.SourcesAndDest)-1]
 	dest := c.cmd.SourcesAndDest[len(c.cmd.SourcesAndDest)-1]
 
 	logrus.Infof("cmd: copy %s", srcs)
 	logrus.Infof("dest: %s", dest)
+
+	c.snapshotFiles = []string{}
+	cwd := constants.RootDir
 
 	if util.ContainsWildcards(srcs) {
 		return nil
@@ -47,9 +54,9 @@ func (c *CopyCommand) ExecuteCommand() error {
 	if len(srcs) > 1 && !IsDir(dest) {
 		return errors.New("when specifying multiple sources in a COPY command, destination must be a directory and end in '/'")
 	}
-	// If destination is not a directory, copy over the file into the destination
+	// // If destination is not a directory, copy over the file into the destination
 	if !IsDir(dest) {
-		return c.CopySingleFile(srcs[0], dest, srcs)
+		return c.CopySingleFile(srcs[0], dest, cwd, srcs)
 	}
 	// Otherwise, go through each src, and copy over the files into dest
 	for _, src := range srcs {
@@ -59,35 +66,25 @@ func (c *CopyCommand) ExecuteCommand() error {
 			return err
 		}
 		for _, file := range files {
-			relPath, err := filepath.Rel(src, file)
-			if err != nil {
-				return err
-			}
-			if relPath == "." {
-				relPath = filepath.Base(file)
-			}
-			destPath := filepath.Join(dest, relPath)
 			if c.buildcontext.Exists(file) {
+				destPath, err := RelativePath(src, file, cwd, dest)
+				if err != nil {
+					return err
+				}
 				fi := c.buildcontext.Stat(file)
 				if fi.IsDir() {
-					os.MkdirAll(destPath, fi.Mode())
+					if err := os.MkdirAll(destPath, fi.Mode()); err != nil {
+						return err
+					}
+					logrus.Infof("Creating directory %s", destPath)
 				} else {
-
+					if err := util.CreateFile(destPath, c.buildcontext.Contents(file), fi.Mode()); err != nil {
+						return err
+					}
+					logrus.Infof("Copied files %s to %s", file, destPath)
 				}
+				c.snapshotFiles = append(c.snapshotFiles, destPath)
 			}
-			relPath, err := filepath.Rel(src, file)
-			if err != nil {
-				return err
-			}
-			if relPath == "." {
-				relPath = filepath.Base(file)
-			}
-			logrus.Infof("Copying from %s to %s", file, destPath)
-			err = util.CreateFile(destPath, contents)
-			if err != nil {
-				return err
-			}
-			c.snapshotFiles = append(c.snapshotFiles, destPath)
 		}
 	}
 	return nil
@@ -132,17 +129,17 @@ func (c *CopyCommand) FilesToSnapshot() []string {
 }
 
 // Author returns some information about the command for the image config
-func (c *CopyCommand) Author() string {
-	return constants.Author + " " + strings.Join(c.cmd.Sources(), " ")
+func (c *CopyCommand) CreatedBy() string {
+	return strings.Join(c.cmd.SourcesAndDest, " ")
 }
 
 func IsDir(path string) bool {
 	return strings.HasSuffix(path, "/")
 }
 
-func (c *CopyCommand) CopySingleFile(path, dest string, srcs []string) error {
+func (c *CopyCommand) CopySingleFile(path, dest, cwd string, srcs []string) error {
 	path = filepath.Clean(path)
-	files, err := c.buildcontext.GetFilesFromPath(path)
+	files, err := c.buildcontext.Files(path)
 	if err != nil {
 		return err
 	}
@@ -164,12 +161,28 @@ func (c *CopyCommand) CopySingleFile(path, dest string, srcs []string) error {
 	// Then, copy over the file to the destination
 	for _, srcFiles := range matchedFiles {
 		for _, file := range srcFiles {
-			logrus.Infof("Copying %s into file %s", file, dest)
-			if err := util.CreateFile(dest, files[file]); err != nil {
-				return err
+			if c.buildcontext.Exists(file) {
+				fi := c.buildcontext.Stat(file)
+				dest = filepath.Join(cwd, dest)
+				if err := util.CreateFile(dest, c.buildcontext.Contents(file), fi.Mode()); err != nil {
+					return err
+				}
+				logrus.Infof("Copied %s to %s", file, dest)
+				c.snapshotFiles = append(c.snapshotFiles, dest)
 			}
-			c.snapshotFiles = append(c.snapshotFiles, dest)
 		}
 	}
 	return nil
+}
+
+func RelativePath(src, file, cwd, dest string) (string, error) {
+	relPath, err := filepath.Rel(src, file)
+	if err != nil {
+		return "", err
+	}
+	if relPath == "." {
+		relPath = filepath.Base(file)
+	}
+	destPath := filepath.Join(cwd, dest, relPath)
+	return destPath, nil
 }
