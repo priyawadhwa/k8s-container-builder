@@ -54,7 +54,7 @@ func (c *CopyCommand) ExecuteCommand(config *manifest.Schema2Config) error {
 	if len(srcs) > 1 && !IsDir(dest) {
 		return errors.New("when specifying multiple sources in a COPY command, destination must be a directory and end in '/'")
 	}
-	// // If destination is not a directory, copy over the file into the destination
+	// If destination is not a directory, copy over the file into the destination
 	if !IsDir(dest) {
 		return c.CopySingleFile(srcs[0], dest, cwd, srcs)
 	}
@@ -71,14 +71,21 @@ func (c *CopyCommand) ExecuteCommand(config *manifest.Schema2Config) error {
 				if err != nil {
 					return err
 				}
-				fi := c.buildcontext.Stat(file)
+				fi, err := c.buildcontext.Stat(file)
+				if err != nil {
+					return err
+				}
 				if fi.IsDir() {
 					if err := os.MkdirAll(destPath, fi.Mode()); err != nil {
 						return err
 					}
 					logrus.Infof("Creating directory %s", destPath)
 				} else {
-					if err := util.CreateFile(destPath, c.buildcontext.Contents(file), fi.Mode()); err != nil {
+					contents, err := c.buildcontext.Contents(file)
+					if err != nil {
+						return err
+					}
+					if err := util.CreateFile(destPath, contents, fi.Mode()); err != nil {
 						return err
 					}
 					logrus.Infof("Copied files %s to %s", file, destPath)
@@ -162,9 +169,16 @@ func (c *CopyCommand) CopySingleFile(path, dest, cwd string, srcs []string) erro
 	for _, srcFiles := range matchedFiles {
 		for _, file := range srcFiles {
 			if c.buildcontext.Exists(file) {
-				fi := c.buildcontext.Stat(file)
+				fi, err := c.buildcontext.Stat(file)
+				if err != nil {
+					return err
+				}
 				dest = filepath.Join(cwd, dest)
-				if err := util.CreateFile(dest, c.buildcontext.Contents(file), fi.Mode()); err != nil {
+				contents, err := c.buildcontext.Contents(file)
+				if err != nil {
+					return err
+				}
+				if err := util.CreateFile(dest, contents, fi.Mode()); err != nil {
 					return err
 				}
 				logrus.Infof("Copied %s to %s", file, dest)
