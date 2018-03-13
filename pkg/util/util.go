@@ -61,17 +61,3 @@ func Hasher() func(string) (string, error) {
 	}
 	return hasher
 }
-
-// ContainsWildcards returns true if any entry in paths contains wildcards
-func ContainsWildcards(paths []string) bool {
-	for _, path := range paths {
-		for i := 0; i < len(path); i++ {
-			ch := path[i]
-			// These are the wildcards that correspond to filepath.Match
-			if ch == '*' || ch == '?' || ch == '[' {
-				return true
-			}
-		}
-	}
-	return false
-}

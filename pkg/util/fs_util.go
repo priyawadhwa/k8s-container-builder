@@ -142,29 +142,3 @@ func CreateFile(path string, contents []byte, perm os.FileMode) error {
 	_, err = f.Write(contents)
 	return err
 }
-
-// GetMatchedFiles returns a map of [src]:[matching filenames], used to resolve wildcards
-func GetMatchedFiles(srcs, files []string) (map[string][]string, error) {
-	f := make(map[string][]string)
-	for _, src := range srcs {
-		src = filepath.Clean(src)
-		matchedFiles := []string{}
-		for _, file := range files {
-			matched, err := filepath.Match(src, file)
-			if err != nil {
-				return nil, err
-			}
-			matchedRoot, err := filepath.Match(filepath.Join(constants.RootDir, src), file)
-			if err != nil {
-				return nil, err
-			}
-			keep := matched || matchedRoot || pkgutil.HasFilepathPrefix(file, src)
-			if !keep {
-				continue
-			}
-			matchedFiles = append(matchedFiles, file)
-		}
-		f[src] = matchedFiles
-	}
-	return f, nil
-}

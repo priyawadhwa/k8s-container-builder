@@ -17,7 +17,6 @@ limitations under the License.
 package cmd
 
 import (
-	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/buildcontext"
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/commands"
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/constants"
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/dockerfile"
@@ -90,12 +89,6 @@ func execute() error {
 		return err
 	}
 
-	// Get context
-	buildcontext, err := buildcontext.GetBuildContext(srcContext)
-	if err != nil {
-		return err
-	}
-
 	// Set environment variables within the image
 	if err := image.SetEnvVariables(sourceImage); err != nil {
 		return err
@@ -105,7 +98,7 @@ func execute() error {
 	// Currently only supports single stage builds
 	for _, stage := range stages {
 		for _, cmd := range stage.Commands {
-			dockerCommand, err := commands.GetCommand(cmd, buildcontext)
+			dockerCommand, err := commands.GetCommand(cmd, srcContext)
 			if err != nil {
 				return err
 			}
