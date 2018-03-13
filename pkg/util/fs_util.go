@@ -168,3 +168,36 @@ func GetMatchedFiles(srcs, files []string) (map[string][]string, error) {
 	}
 	return f, nil
 }
+
+func IsDestDir(path string) bool {
+	return strings.HasSuffix(path, "/")
+}
+
+// RelativeFilepath returns the relative filepath
+// If source is a file:
+//	If dest is a dir, copy it to /dest/relpath
+// 	If dest is a file, copy directly
+
+// If source is a dir:
+//	Assume dest is also a dir, and copy to /dest/relpath
+func RelativeFilepath(filename, srcName, cwd, dest string, src, fi os.FileInfo) (string, error) {
+	if src.IsDir() || IsDestDir(dest) {
+		relPath, err := filepath.Rel(srcName, filename)
+		if err != nil {
+			return "", err
+		}
+		if relPath == "." && !fi.IsDir() {
+			relPath = filepath.Base(filename)
+		}
+		destPath := filepath.Join(cwd, dest, relPath)
+		return destPath, nil
+	}
+	return filepath.Join(cwd, dest), nil
+}
+
+func WildcardRelativeFilepath(filename, dest string) string {
+	if IsDestDir(dest) {
+		return filepath.Join(dest, filepath.Base(filename))
+	}
+	return dest
+}

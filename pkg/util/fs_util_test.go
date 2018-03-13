@@ -130,3 +130,118 @@ func Test_Files(t *testing.T) {
 		testutil.CheckErrorAndDeepEqual(t, false, err, test.expectedFiles, actualFiles)
 	}
 }
+
+var relPathTests = []struct {
+	src              string
+	srcDir           bool
+	filename         string
+	fileDir          bool
+	cwd              string
+	dest             string
+	expectedFilepath string
+}{
+	{
+		src:              "context/foo",
+		filename:         "context/foo",
+		cwd:              "/",
+		dest:             "/foo",
+		expectedFilepath: "/foo",
+	},
+	{
+		src:              "context/foo",
+		filename:         "context/foo",
+		cwd:              "/",
+		dest:             "/foodir/",
+		expectedFilepath: "/foodir/foo",
+	},
+	{
+		src:              "foo",
+		filename:         "./foo",
+		cwd:              "/",
+		dest:             "foo",
+		expectedFilepath: "/foo",
+	},
+	{
+		src:              "dir/",
+		filename:         "dir/a/b",
+		cwd:              "/",
+		dest:             "pkg/",
+		expectedFilepath: "/pkg/a/b",
+	},
+	{
+		src:              "dir/",
+		filename:         "dir/a/b",
+		cwd:              "/newdir",
+		dest:             "pkg/",
+		expectedFilepath: "/newdir/pkg/a/b",
+	},
+	{
+		src:              "./context/empty",
+		srcDir:           true,
+		filename:         "context/empty",
+		fileDir:          true,
+		cwd:              "/",
+		dest:             "/empty",
+		expectedFilepath: "/empty",
+	},
+	{
+		src:              "./context/empty",
+		srcDir:           true,
+		filename:         "context/empty",
+		fileDir:          true,
+		cwd:              "/dir",
+		dest:             "/empty",
+		expectedFilepath: "/dir/empty",
+	},
+	{
+		src:              "./",
+		srcDir:           true,
+		filename:         "./",
+		fileDir:          true,
+		cwd:              "/",
+		dest:             "/dir",
+		expectedFilepath: "/dir",
+	},
+	{
+		src:              "./",
+		srcDir:           true,
+		filename:         "a",
+		fileDir:          false,
+		cwd:              "/",
+		dest:             "/dir",
+		expectedFilepath: "/dir/a",
+	},
+	{
+		src:              ".",
+		srcDir:           true,
+		filename:         "context/bar",
+		fileDir:          false,
+		cwd:              "/",
+		dest:             "/dir",
+		expectedFilepath: "/dir/context/bar",
+	},
+	{
+		src:              ".",
+		srcDir:           true,
+		filename:         "context/bar",
+		fileDir:          true,
+		cwd:              "/",
+		dest:             "/dir",
+		expectedFilepath: "/dir/context/bar",
+	},
+}
+
+func Test_RelativeFilepath(t *testing.T) {
+	for _, test := range relPathTests {
+		srcFI := testutil.MockFileInfo{
+			Filename: test.src,
+			Dir:      test.srcDir,
+		}
+		fi := testutil.MockFileInfo{
+			Filename: filepath.Join("/workspace", test.filename),
+			Dir:      test.fileDir,
+		}
+		actualFilepath, err := RelativeFilepath(test.filename, test.src, test.cwd, test.dest, srcFI, fi)
+		testutil.CheckErrorAndDeepEqual(t, false, err, test.expectedFilepath, actualFilepath)
+	}
+}
