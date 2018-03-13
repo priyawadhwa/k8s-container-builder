@@ -24,10 +24,11 @@ import (
 )
 
 type BuildContext interface {
+	// Files returns a list of all files that are rooted at path
 	Files(path string) ([]string, error)
 	Exists(path string) bool
-	Stat(path string) os.FileInfo
-	Contents(path string) []byte
+	Stat(path string) (os.FileInfo, error)
+	Contents(path string) ([]byte, error)
 }
 
 func GetBuildContext(source string) (BuildContext, error) {
