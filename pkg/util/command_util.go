@@ -38,15 +38,29 @@ func ContainsWildcards(paths []string) bool {
 	return false
 }
 
-func ResolveSources(srcs []string, root, cwd string) ([]string, error) {
-	if ContainsWildcards(srcs) {
+// ResolveSources resolves the given sources if the sources contains wildcard
+// It returns a map of [src]:[files rooted at src]
+func ResolveSources(srcsAndDest instructions.SourcesAndDest, root, cwd string) (map[string][]string, error) {
+	srcs := srcsAndDest[:len(srcsAndDest)-1]
+	// If sources contain wildcards, we first need to resolve them to actual paths
+	wildcard := ContainsWildcards(srcs)
+	if wildcard {
 		files, err := Files("", root)
 		if err != nil {
 			return nil, err
 		}
-		return matchSources(srcs, files, cwd)
+		srcs, err = matchSources(srcs, files, cwd)
+		if err != nil {
+			return nil, err
+		}
 	}
-	return srcs, nil
+	// Now, get a map of [src]:[files rooted at src]
+	srcMap, err := SourcesToFilesMap(srcs, root)
+	if err != nil {
+		return nil, err
+	}
+	// Check to make sure the sources are valid
+	return srcMap, IsSrcsValid(srcsAndDest, srcMap)
 }
 
 // matchSources returns a map of [src]:[matching filepaths], used to resolve wildcards
@@ -79,11 +93,11 @@ func IsDestDir(path string) bool {
 
 // RelativeFilepath returns the relative filepath
 // If source is a file:
-//	If dest is a dir, copy it to /dest/relpath
-// 	If dest is a file, copy directly
+//	If dest is a dir, copy it to /cwd/dest/relpath
+// 	If dest is a file, copy directly to /cwd/dest
 
 // If source is a dir:
-//	Assume dest is also a dir, and copy to /dest/relpath
+//	Assume dest is also a dir, and copy to /cwd/dest/relpath
 func RelativeFilepath(filename, srcName, dest, cwd, buildcontext string) (string, error) {
 	fi, err := os.Stat(filepath.Join(buildcontext, filename))
 	if err != nil {
@@ -107,6 +121,7 @@ func RelativeFilepath(filename, srcName, dest, cwd, buildcontext string) (string
 	return filepath.Join(cwd, dest), nil
 }
 
+// SourcesToFilesMap returns a map of [src]:[files rooted at source]
 func SourcesToFilesMap(srcs []string, root string) (map[string][]string, error) {
 	srcMap := make(map[string][]string)
 	for _, src := range srcs {
@@ -120,6 +135,7 @@ func SourcesToFilesMap(srcs []string, root string) (map[string][]string, error) 
 	return srcMap, nil
 }
 
+// IsSrcsValid returns an error if the sources provided are invalid, or nil otherwise
 func IsSrcsValid(srcsAndDest instructions.SourcesAndDest, srcMap map[string][]string) error {
 	srcs := srcsAndDest[:len(srcsAndDest)-1]
 	dest := srcsAndDest[len(srcsAndDest)-1]

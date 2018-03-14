@@ -40,17 +40,12 @@ func (c *CopyCommand) ExecuteCommand(config *manifest.Schema2Config) error {
 	logrus.Infof("cmd: copy %s", srcs)
 	logrus.Infof("dest: %s", dest)
 
-	srcs, err := util.ResolveSources(srcs, c.buildcontext, config.WorkingDir)
+	// Get a map of [src]:[files rooted at src]
+	srcMap, err := util.ResolveSources(c.cmd.SourcesAndDest, c.buildcontext, config.WorkingDir)
 	if err != nil {
 		return err
 	}
-	srcMap, err := util.SourcesToFilesMap(srcs, c.buildcontext)
-	if err != nil {
-		return err
-	}
-	if err := util.IsSrcsValid(c.cmd.SourcesAndDest, srcMap); err != nil {
-		return err
-	}
+	// For each source, iterate through each file within and copy it over
 	for src, files := range srcMap {
 		for _, file := range files {
 			fi, err := os.Stat(filepath.Join(c.buildcontext, file))
@@ -61,12 +56,14 @@ func (c *CopyCommand) ExecuteCommand(config *manifest.Schema2Config) error {
 			if err != nil {
 				return err
 			}
+			// If source file is a directory, we want to create a directory ...
 			if fi.IsDir() {
 				logrus.Infof("Creating directory %s", destPath)
 				if err := os.MkdirAll(destPath, fi.Mode()); err != nil {
 					return err
 				}
 			} else {
+				// ... Else, we want to copy over a file
 				logrus.Infof("Copying file %s to %s", file, destPath)
 				contents, err := ioutil.ReadFile(filepath.Join(c.buildcontext, file))
 				if err != nil {
@@ -76,6 +73,7 @@ func (c *CopyCommand) ExecuteCommand(config *manifest.Schema2Config) error {
 					return err
 				}
 			}
+			// Append the destination file to the list of files that should be snapshotted later
 			c.snapshotFiles = append(c.snapshotFiles, destPath)
 		}
 	}
