@@ -74,6 +74,7 @@ func (s *Snapshotter) TakeSnapshot(files []string) ([]byte, error) {
 func (s *Snapshotter) TakeSnapshotOfFiles(files []string) ([]byte, error) {
 	logrus.Infof("Taking snapshot of files %v...", files)
 	s.l.Snapshot()
+	filesAdded := false
 	if len(files) == 0 {
 		logrus.Info("No files changed in this command, skipping snapshotting.")
 		return nil, nil
@@ -96,8 +97,12 @@ func (s *Snapshotter) TakeSnapshotOfFiles(files []string) ([]byte, error) {
 			return nil, err
 		}
 		if maybeAdd {
+			filesAdded = true
 			util.AddToTar(file, info, w)
 		}
+	}
+	if !filesAdded {
+		return nil, nil
 	}
 	return ioutil.ReadAll(buf)
 }
