@@ -60,6 +60,23 @@ var RootCmd = &cobra.Command{
 	},
 }
 
+// resolveSourceContext unpacks the source context if it is a tar in a GCS bucket
+// it returns the path to the local build context
+func resolveSourceContext() error {
+	if util.FilepathExists(srcContext) {
+		return nil
+	}
+	// Else, assume the source context is the name of a bucket
+	logrus.Infof("Using GCS bucket %s as source context", srcContext)
+	buildContextPath := constants.BuildContextDir
+	if err := util.UnpackTarFromGCSBucket(srcContext, buildContextPath); err != nil {
+		return err
+	}
+	logrus.Debugf("Unpacked tar from %s to path %s", srcContext, buildContextPath)
+	srcContext = buildContextPath
+	return nil
+}
+
 func execute() error {
 	// Parse dockerfile and unpack base image to root
 	d, err := ioutil.ReadFile(dockerfilePath)
@@ -128,19 +145,4 @@ func execute() error {
 	}
 	// Push the image
 	return image.PushImage(sourceImage, destination)
-}
-
-// resolveSourceContext unpacks the source context if it is a tar in a GCS bucket
-// it returns the path to the local build context
-func resolveSourceContext() error {
-	if util.FilepathExists(srcContext) {
-		return nil
-	}
-	// Else, assume the source context is the name of a bucket
-	buildContextPath := constants.BuildContextDir
-	if err := util.UnpackTarFromGCSBucket(srcContext, buildContextPath); err != nil {
-		return err
-	}
-	srcContext = buildContextPath
-	return nil
 }

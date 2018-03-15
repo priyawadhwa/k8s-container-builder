@@ -17,7 +17,6 @@ limitations under the License.
 package util
 
 import (
-	"archive/tar"
 	"cloud.google.com/go/storage"
 	pkgutil "github.com/GoogleCloudPlatform/container-diff/pkg/util"
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/constants"
@@ -70,9 +69,6 @@ func getTarFromBucket(bucketName string) (string, error) {
 	logrus.Debugf("Copied tarball %s from GCS bucket %s to %s", constants.KbuildTar, bucketName, tarPath)
 	defer f.Close()
 
-	w := tar.NewWriter(f)
-	defer w.Close()
-
-	_, err = io.Copy(w, reader)
+	_, err = io.Copy(f, reader)
 	return tarPath, err
 }
