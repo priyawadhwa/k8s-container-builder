@@ -97,3 +97,8 @@ func fileSystemWhitelist(path string) ([]string, error) {
 	}
 	return whitelist, nil
 }
+
+func FilepathExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}

@@ -49,6 +49,10 @@ var RootCmd = &cobra.Command{
 		return util.SetLogLevel(logLevel)
 	},
 	Run: func(cmd *cobra.Command, args []string) {
+		if err := resolveSourceContext(); err != nil {
+			logrus.Error(err)
+			os.Exit(1)
+		}
 		if err := execute(); err != nil {
 			logrus.Error(err)
 			os.Exit(1)
@@ -124,4 +128,19 @@ func execute() error {
 	}
 	// Push the image
 	return image.PushImage(sourceImage, destination)
+}
+
+// resolveSourceContext unpacks the source context if it is a tar in a GCS bucket
+// it returns the path to the local build context
+func resolveSourceContext() error {
+	if util.FilepathExists(srcContext) {
+		return nil
+	}
+	// Else, assume the source context is the name of a bucket
+	buildContextPath := constants.BuildContextDir
+	if err := util.UnpackTarFromGCSBucket(srcContext, buildContextPath); err != nil {
+		return err
+	}
+	srcContext = buildContextPath
+	return nil
 }
