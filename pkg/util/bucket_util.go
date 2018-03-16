@@ -27,25 +27,30 @@ import (
 	"path/filepath"
 )
 
-// UnpackTarFromGCSBucket unpacks the kbuild.tar file in the given bucket at the given directory
+// UnpackTarFromGCSBucket unpacks the kbuild.tar file in the given bucket to the given directory
 func UnpackTarFromGCSBucket(bucketName, directory string) error {
 	// Get the tar from the bucket
-	tarPath, err := getTarFromBucket(bucketName)
+	tarPath, err := getTarFromBucket(bucketName, directory)
 	if err != nil {
 		return err
 	}
-
+	logrus.Debug("Unpacking source context tar...")
 	// Now, unpack the tar to a build context, and return the path to the build context
 	file, err := os.Open(tarPath)
 	if err != nil {
 		return err
 	}
-	return pkgutil.UnTar(file, directory, nil)
+	if err := pkgutil.UnTar(file, directory, nil); err != nil {
+		return err
+	}
+	// Remove the tar so it doesn't interfere with subsequent commands
+	logrus.Debugf("Deleting %s", tarPath)
+	return os.Remove(tarPath)
 }
 
 // getTarFromBucket gets kbuild.tar from the GCS bucket and saves it to the filesystem
 // It returns the path to the tar file
-func getTarFromBucket(bucketName string) (string, error) {
+func getTarFromBucket(bucketName, directory string) (string, error) {
 	ctx := context.Background()
 	client, err := storage.NewClient(ctx)
 	if err != nil {
@@ -61,7 +66,7 @@ func getTarFromBucket(bucketName string) (string, error) {
 	}
 	defer reader.Close()
 
-	tarPath := filepath.Join(constants.KbuildDir, constants.KbuildTar)
+	tarPath := filepath.Join(directory, constants.KbuildTar)
 	f, err := os.Create(tarPath)
 	if err != nil {
 		return "", nil

@@ -61,7 +61,7 @@ var RootCmd = &cobra.Command{
 }
 
 // resolveSourceContext unpacks the source context if it is a tar in a GCS bucket
-// it returns the path to the local build context
+// it resets srcContext to be the path to the unpacked build context within the image
 func resolveSourceContext() error {
 	if util.FilepathExists(srcContext) {
 		return nil
