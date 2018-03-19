@@ -28,7 +28,7 @@
     "pkg/image",
     "pkg/util"
   ]
-  revision = "ce3228b4afba2b2fb9b42c416c8f59a14ee7c1dd"
+  revision = "6a521891eafa833a08adf664edb6e67b18220ea7"
   source = "github.com/GoogleCloudPlatform/container-diff"
 
 [[projects]]
@@ -132,7 +132,7 @@
     "pkg/system",
     "pkg/truncindex"
   ]
-  revision = "66a38bb219e9776482c18e8c02f438e5112916f1"
+  revision = "1e5ce40cdb84ab66e26186435b1273e04b879fef"
 
 [[projects]]
   branch = "master"
@@ -396,7 +396,7 @@
     "nfs",
     "xfs"
   ]
-  revision = "d274e363d5759d1c916232217be421f1cc89c5fe"
+  revision = "1c7ff3de94ae006f58cba483a4c9c6d7c61e1d98"
 
 [[projects]]
   name = "github.com/sirupsen/logrus"
@@ -433,6 +433,24 @@
   version = "v0.10.2"
 
 [[projects]]
+  name = "go.opencensus.io"
+  packages = [
+    "internal",
+    "internal/tagencoding",
+    "plugin/ochttp",
+    "plugin/ochttp/propagation/b3",
+    "plugin/ochttp/propagation/google",
+    "stats",
+    "stats/internal",
+    "stats/view",
+    "tag",
+    "trace",
+    "trace/propagation"
+  ]
+  revision = "983446b8dae3871316dc8610f7aa61e160b50b31"
+  version = "v0.5.0"
+
+[[projects]]
   branch = "master"
   name = "golang.org/x/crypto"
   packages = [
@@ -445,7 +463,7 @@
     "openpgp/s2k",
     "ssh/terminal"
   ]
-  revision = "91a49db82a88618983a78a06c1cbd4e00ab749ab"
+  revision = "85f98707c97e11569271e4d9b3d397e079c4f4d0"
 
 [[projects]]
   branch = "master"
@@ -461,7 +479,7 @@
     "proxy",
     "trace"
   ]
-  revision = "22ae77b79946ea320088417e4d50825671d82d57"
+  revision = "07e8617a6db2368fa55d4616f371ee1b1403c817"
 
 [[projects]]
   branch = "master"
@@ -473,7 +491,7 @@
     "jws",
     "jwt"
   ]
-  revision = "2f32c3ac0fa4fb807a0fcefb0b6f2468a0d99bd0"
+  revision = "fdc9e635145ae97e6c2cb777c48305600cf515cb"
 
 [[projects]]
   branch = "master"
@@ -482,7 +500,7 @@
     "unix",
     "windows"
   ]
-  revision = "f6cff0780e542efa0c8e864dc8fa522808f6a598"
+  revision = "dd2ff4accc098aceecb86b36eaa7829b2a17b1c9"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -519,7 +537,7 @@
     "storage/v1",
     "transport/http"
   ]
-  revision = "ab90adb3efa287b869ecb698db42f923cc734972"
+  revision = "55e9fb4044f4757138d4273ace23060d022d18f9"
 
 [[projects]]
   name = "google.golang.org/appengine"
@@ -546,7 +564,7 @@
     "googleapis/iam/v1",
     "googleapis/rpc/status"
   ]
-  revision = "2d9486acae19cf9bd0c093d7dc236a323726a9e4"
+  revision = "f8c8703595236ae70fdf8789ecb656ea0bcdcf46"
 
 [[projects]]
   name = "google.golang.org/grpc"
@@ -599,6 +617,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "f0b3e31adc304aa91e95b072a994ba1faf1239f6a41b3b314969a79d42a22df9"
+  inputs-digest = "3f069a8184097b7038ebc1ccb892dcb1946dce3cbbec0541dd394a97f38b28d2"
   solver-name = "gps-cdcl"
   solver-version = 1

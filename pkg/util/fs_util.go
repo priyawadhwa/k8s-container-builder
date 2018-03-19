@@ -31,13 +31,7 @@ import (
 	"strings"
 )
 
-var whitelist = []string{"/work-dir"}
-
-func InitializeWhitelist() error {
-	whitelist, err := fileSystemWhitelist(constants.WhitelistPath)
-	logrus.Infof("Whitelisted directories are %s", whitelist)
-	return err
-}
+var whitelist = []string{"/kbuild"}
 
 // ExtractFileSystemFromImage pulls an image and unpacks it to a file system at root
 func ExtractFileSystemFromImage(img string) error {

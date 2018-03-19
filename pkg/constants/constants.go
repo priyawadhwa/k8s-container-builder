@@ -27,7 +27,7 @@ const (
 
 	WhitelistPath = "/proc/self/mountinfo"
 
-	PolicyJSONPath = "/work-dir/policy.json"
+	Author = "kbuild"
 
 	ConfigPath = "/root/.docker/config.json"
 )

@@ -37,19 +37,19 @@ func TestSnapshotFileChange(t *testing.T) {
 	}
 	// Make some changes to the filesystem
 	newFiles := map[string]string{
-		"foo":          "newbaz1",
-		"bar/bat":      "baz",
-		"work-dir/bat": "bat",
+		"foo":        "newbaz1",
+		"bar/bat":    "baz",
+		"kbuild/bat": "bat",
 	}
 	if err := testutil.SetupFiles(testDir, newFiles); err != nil {
 		t.Fatalf("Error setting up fs: %s", err)
 	}
 	// Take another snapshot
-	contents, filesAdded, err := snapshotter.TakeSnapshot()
+	contents, err := snapshotter.TakeSnapshot(nil)
 	if err != nil {
 		t.Fatalf("Error taking snapshot of fs: %s", err)
 	}
-	if !filesAdded {
+	if contents == nil {
 		t.Fatal("No files added to snapshot.")
 	}
 	// Check contents of the snapshot, make sure contents is equivalent to snapshotFiles
@@ -93,11 +93,11 @@ func TestSnapshotChangePermissions(t *testing.T) {
 		t.Fatalf("Error changing permissions on %s: %v", batPath, err)
 	}
 	// Take another snapshot
-	contents, filesAdded, err := snapshotter.TakeSnapshot()
+	contents, err := snapshotter.TakeSnapshot(nil)
 	if err != nil {
 		t.Fatalf("Error taking snapshot of fs: %s", err)
 	}
-	if !filesAdded {
+	if contents == nil {
 		t.Fatal("No files added to snapshot.")
 	}
 	// Check contents of the snapshot, make sure contents is equivalent to snapshotFiles
@@ -134,17 +134,17 @@ func TestSnapshotFiles(t *testing.T) {
 	}
 	// Make some changes to the filesystem
 	newFiles := map[string]string{
-		"foo":           "newbaz1",
-		"work-dir/file": "bat",
+		"foo":         "newbaz1",
+		"kbuild/file": "bat",
 	}
 	if err := testutil.SetupFiles(testDir, newFiles); err != nil {
 		t.Fatalf("Error setting up fs: %s", err)
 	}
 	filesToSnapshot := []string{
 		filepath.Join(testDir, "foo"),
-		filepath.Join(testDir, "work-dir/file"),
+		filepath.Join(testDir, "kbuild/file"),
 	}
-	contents, err := snapshotter.TakeSnapshotOfFiles(filesToSnapshot)
+	contents, err := snapshotter.TakeSnapshot(filesToSnapshot)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -181,12 +181,12 @@ func TestEmptySnapshot(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Take snapshot with no changes
-	_, filesAdded, err := snapshotter.TakeSnapshot()
+	contents, err := snapshotter.TakeSnapshot(nil)
 	if err != nil {
 		t.Fatalf("Error taking snapshot of fs: %s", err)
 	}
 	// Since we took a snapshot with no changes, contents should be nil
-	if filesAdded {
+	if contents != nil {
 		t.Fatal("Files added even though no changes to file system were made.")
 	}
 }
@@ -197,9 +197,9 @@ func setUpTestDir() (string, *Snapshotter, error) {
 		return testDir, nil, errors.Wrap(err, "setting up temp dir")
 	}
 	files := map[string]string{
-		"foo":           "baz1",
-		"bar/bat":       "baz2",
-		"work-dir/file": "file",
+		"foo":         "baz1",
+		"bar/bat":     "baz2",
+		"kbuild/file": "file",
 	}
 	// Set up initial files
 	if err := testutil.SetupFiles(testDir, files); err != nil {
