@@ -40,9 +40,3 @@ const (
 	// for example, a tarball from a GCS bucket will be unpacked here
 	BuildContextDir = "/kbuild/buildcontext/"
 )
-
-// DefaultEnvVariables are the default env variables set in the container
-var DefaultEnvVariables = map[string]string{
-	"PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root:/work-dir",
-	"HOME": "/root",
-}
