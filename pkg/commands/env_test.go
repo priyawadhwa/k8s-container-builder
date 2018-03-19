@@ -13,36 +13,43 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-
-package dockerfile
+package commands
 
 import (
-	"bytes"
-
+	"github.com/GoogleCloudPlatform/k8s-container-builder/testutil"
+	"github.com/containers/image/manifest"
 	"github.com/docker/docker/builder/dockerfile/instructions"
-	"github.com/docker/docker/builder/dockerfile/parser"
+	"testing"
 )
 
-var EscapeToken rune
+func TestUpdateEnvConfig(t *testing.T) {
+	cfg := &manifest.Schema2Config{
+		Env: []string{
+			"PATH=/path/to/dir",
+			"hey=hey",
+		},
+	}
 
-// Parse parses the contents of a Dockerfile and returns a list of commands
-func Parse(b []byte) ([]instructions.Stage, error) {
-	p, err := parser.Parse(bytes.NewReader(b))
-	if err != nil {
-		return nil, err
+	newEnvs := []instructions.KeyValuePair{
+		{
+			Key:   "foo",
+			Value: "foo2",
+		},
+		{
+			Key:   "PATH",
+			Value: "/new/path/",
+		},
+		{
+			Key:   "foo",
+			Value: "newfoo",
+		},
 	}
-	stages, _, err := instructions.Parse(p.AST)
-	if err != nil {
-		return nil, err
-	}
-	return stages, err
-}
 
-func SetEscapeToken(b []byte) error {
-	p, err := parser.Parse(bytes.NewReader(b))
-	if err != nil {
-		return err
+	expectedEnvArray := []string{
+		"PATH=/new/path/",
+		"hey=hey",
+		"foo=newfoo",
 	}
-	EscapeToken = p.EscapeToken
-	return nil
+	updateConfigEnv(newEnvs, cfg)
+	testutil.CheckErrorAndDeepEqual(t, false, nil, expectedEnvArray, cfg.Env)
 }
