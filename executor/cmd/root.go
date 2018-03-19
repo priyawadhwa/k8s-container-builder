@@ -144,5 +144,23 @@ func execute() error {
 		}
 	}
 	// Push the image
+	if err := setDefaultEnv(); err != nil {
+		return err
+	}
 	return image.PushImage(sourceImage, destination)
+}
+
+// setDefaultEnv sets default values for HOME and PATH so that
+// config.json and docker-credential-gcr can be accessed
+func setDefaultEnv() error {
+	defaultEnvs := map[string]string{
+		"HOME": "/root",
+		"PATH": "/usr/local/bin/",
+	}
+	for key, val := range defaultEnvs {
+		if err := os.Setenv(key, val); err != nil {
+			return err
+		}
+	}
+	return nil
 }
