@@ -158,6 +158,14 @@ func GetImageTar(from string) (string, error) {
 	return tarPath, nil
 }
 
+func GetPreviousStageDir(from string) (string, error) {
+	dirPath := filepath.Join(constants.KbuildDir, from)
+	if _, err := os.Stat(dirPath); err != nil {
+		return "", err
+	}
+	return dirPath, nil
+}
+
 func SaveFileSystemAsTarball(name string, index int) error {
 	tarPath := filepath.Join(constants.WorkspaceDir, name+".tar")
 	if name == "" {
@@ -187,6 +195,34 @@ func SaveFileSystemAsTarball(name string, index int) error {
 	if indexPath != tarPath {
 		logrus.Debugf("Symlinking from %s to %s", tarPath, indexPath)
 		return os.Symlink(tarPath, indexPath)
+	}
+	return nil
+}
+
+func SaveFilesToDir(name string, index int, files []string) error {
+	dirPath := filepath.Join(constants.KbuildDir, strconv.Itoa(index))
+	if name != "" {
+		dirPath = filepath.Join(constants.KbuildDir, name)
+		indexPath := filepath.Join(constants.WorkspaceDir, strconv.Itoa(index)+".tar")
+		if err := os.Symlink(dirPath, indexPath); err != nil {
+			return err
+		}
+	}
+	for _, file := range files {
+		if IgnoreFilepath(file, constants.RootDir) {
+			continue
+		}
+		fi, err := os.Stat(file)
+		if err != nil {
+			return err
+		}
+		contents, err := ioutil.ReadFile(file)
+		if err != nil {
+			return err
+		}
+		if err := CreateFile(filepath.Join(dirPath, file), contents, fi.Mode()); err != nil {
+			return err
+		}
 	}
 	return nil
 }

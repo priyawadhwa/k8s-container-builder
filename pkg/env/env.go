@@ -21,13 +21,12 @@ import (
 	"os"
 )
 
-// SetEnvironmentVariables sets the envs in the image
-// TODO: Set environment variables as they are in image config
-func SetEnvironmentVariables(image string) error {
-	for key, val := range constants.DefaultEnvVariables {
-		if err := os.Setenv(key, val); err != nil {
-			return err
-		}
+func SetEnvironmentVariables() error {
+	if err := os.Setenv("PATH", constants.PATH); err != nil {
+		return err
+	}
+	if err := os.Setenv("HOME", constants.HOME); err != nil {
+		return err
 	}
 	return nil
 }

@@ -40,6 +40,10 @@ func (c *CopyCommand) ExecuteCommand(config *manifest.Schema2Config) error {
 	logrus.Infof("cmd: copy %s", srcs)
 	logrus.Infof("dest: %s", dest)
 
+	if err := c.checkBuildContext(); err != nil {
+		return err
+	}
+
 	// Get a map of [src]:[files rooted at src]
 	srcMap, err := util.ResolveSources(c.cmd.SourcesAndDest, c.buildcontext)
 	if err != nil {
@@ -76,6 +80,18 @@ func (c *CopyCommand) ExecuteCommand(config *manifest.Schema2Config) error {
 			// Append the destination file to the list of files that should be snapshotted later
 			c.snapshotFiles = append(c.snapshotFiles, destPath)
 		}
+	}
+	return nil
+}
+
+func (c *CopyCommand) checkBuildContext() error {
+	if c.cmd.From != "" {
+		dirPath, err := util.GetPreviousStageDir(c.cmd.From)
+		if err != nil {
+			return err
+		}
+		logrus.Debugf("Using source context %s", dirPath)
+		c.buildcontext = dirPath
 	}
 	return nil
 }

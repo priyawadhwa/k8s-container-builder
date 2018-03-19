@@ -17,9 +17,11 @@ limitations under the License.
 package cmd
 
 import (
+	img "github.com/GoogleCloudPlatform/container-diff/pkg/image"
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/commands"
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/constants"
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/dockerfile"
+	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/env"
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/image"
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/snapshot"
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/util"
@@ -78,94 +80,78 @@ func resolveSourceContext() error {
 }
 
 func execute() error {
-	// Initialize whitelist
-	if err := util.InitializeWhitelist(); err != nil {
-		return err
-	}
 
 	// Read and parse dockerfile
 	b, err := ioutil.ReadFile(dockerfilePath)
 	if err != nil {
 		return err
 	}
-	// Set the escape token
-	if err := dockerfile.SetEscapeToken(d); err != nil {
-		return err
-	}
-	baseImage := stages[0].BaseName
 
 	stages, err := dockerfile.Parse(b)
 	if err != nil {
 		return err
 	}
 
+	var finalImage *img.MutableSource
+
 	for index, stage := range stages {
-
 		baseImage := stage.BaseName
-
 		finalStage := (index + 1) == len(stages)
 		if finalStage {
-			// Initialize source image
-			logrus.Info("Initializing source image")
-			if err := image.InitializeSourceImage(baseImage); err != nil {
-				logrus.Fatalf("Unable to intitalize source images %s: %v", baseImage, err)
-			}
+			finalImage, err = image.NewSourceImage(baseImage)
+		}
+		if err != nil {
+			return err
+		}
+		sourceImage, err := image.NewSourceImage(baseImage)
+		if err != nil {
+			return err
 		}
 		logrus.Infof("Extracting filesystem for %s...", baseImage)
-		err = util.ExtractFileSystemFromImage(baseImage)
-		if err != nil {
+		if err := util.ExtractFileSystemFromImage(baseImage); err != nil {
 			return err
 		}
 		l := snapshot.NewLayeredMap(util.Hasher())
 		snapshotter := snapshot.NewSnapshotter(l, constants.RootDir)
-
 		// Take initial snapshot
 		if err := snapshotter.Init(); err != nil {
 			return err
 		}
-
-		// Get context information
-		context := dest.GetContext(srcContext)
+		// Set environment variables within the image
+		if err := image.SetEnvVariables(sourceImage); err != nil {
+			return err
+		}
+		imageConfig := sourceImage.Config()
 
 		for _, cmd := range stage.Commands {
 			dockerCommand, err := commands.GetCommand(cmd, srcContext)
 			if err != nil {
 				return err
 			}
-			var contents []byte
-			if dockerCommand.GetSnapshotFiles() != nil {
-				logrus.Info("Taking snapshot of specific files now.")
-				contents, err = snapshotter.TakeSnapshotOfFiles(dockerCommand.GetSnapshotFiles())
+			if err := dockerCommand.ExecuteCommand(imageConfig); err != nil {
+				return err
+			}
+			if finalStage {
+				// Now, we get the files to snapshot from this command and take the snapshot
+				snapshotFiles := dockerCommand.FilesToSnapshot()
+				contents, err := snapshotter.TakeSnapshot(snapshotFiles)
 				if err != nil {
 					return err
 				}
 				if contents == nil {
-					logrus.Info("Contents are empty, continue.")
+					logrus.Info("No files were changed, appending empty layer to config.")
+					finalImage.AppendConfigHistory(constants.Author, true)
 					continue
 				}
-			} else {
-				logrus.Info("Taking generic snapshot now.")
-				c, filesAdded, err := snapshotter.TakeSnapshot()
-				contents = c
-				if err != nil {
-					return err
-				}
-				if !filesAdded {
-					logrus.Info("No files were changed in this command, appending empty layer to config history.")
-					image.AppendEmptyLayerToConfigHistory("kbuild")
-					continue
-				}
-			}
-			if finalStage {
-				logrus.Info("Appending to source image")
-				if err := image.AppendLayer(contents); err != nil {
+				// Append the layer to the image
+				if err := finalImage.AppendLayer(contents, constants.Author); err != nil {
 					return err
 				}
 			}
 		}
 		if finalStage {
 			// Save environment variables
-			env.SetEnvironmentVariables(baseImage)
+			env.SetEnvironmentVariables()
 			continue
 		}
 		// Now package up filesystem as tarball
@@ -174,12 +160,13 @@ func execute() error {
 		if err != nil {
 			return err
 		}
-		if err := util.SaveFilesToTarball(stage.Name, index, tarballFiles); err != nil {
+		if err := util.SaveFilesToDir(stage.Name, index, tarballFiles); err != nil {
 			return err
 		}
 		// Then, delete filesystem
 		util.DeleteFileSystem()
 	}
+
 	// Push the image
-	return image.PushImage(name)
+	return image.PushImage(finalImage, destination)
 }

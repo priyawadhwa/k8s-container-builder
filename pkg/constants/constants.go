@@ -39,4 +39,7 @@ const (
 	// BuildContextDir is the directory a build context will be unpacked into,
 	// for example, a tarball from a GCS bucket will be unpacked here
 	BuildContextDir = "/kbuild/buildcontext/"
+
+	PATH = "/usr/bin/local"
+	HOME = "/root"
 )
