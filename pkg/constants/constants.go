@@ -25,11 +25,20 @@ const (
 	// WorkspaceDir is the path to the workspace
 	WorkspaceDir = "/work-dir/"
 
+	//KbuildDir is the path to the kbuild directory
+	KbuildDir = "/kbuild"
+
 	WhitelistPath = "/proc/self/mountinfo"
 
 	Author = "kbuild"
 
 	ConfigPath = "/root/.docker/config.json"
+	// KbuildTar is the default name of the tar uploaded to GCS buckets
+	KbuildTar = "kbuild.tar"
+
+	// BuildContextDir is the directory a build context will be unpacked into,
+	// for example, a tarball from a GCS bucket will be unpacked here
+	BuildContextDir = "/kbuild/buildcontext/"
 )
 
 // DefaultEnvVariables are the default env variables set in the container
