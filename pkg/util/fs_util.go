@@ -96,26 +96,6 @@ func fileSystemWhitelist(path string) ([]string, error) {
 	return whitelist, nil
 }
 
-// CreateFile creates a file at path with contents specified
-func CreateFile(path string, contents []byte) error {
-	// Create directory path if it doesn't exist
-	baseDir := filepath.Dir(path)
-	if _, err := os.Stat(baseDir); os.IsNotExist(err) {
-		logrus.Debugf("baseDir %s for file %s does not exist. Creating.", baseDir, path)
-		if err := os.MkdirAll(baseDir, 0755); err != nil {
-			return err
-		}
-	}
-
-	f, err := os.Create(path)
-	defer f.Close()
-	if err != nil {
-		return err
-	}
-	_, err = f.Write(contents)
-	return err
-}
-
 // Files returns a list of all files that stem from root
 func Files(root string) ([]string, error) {
 	var files []string
@@ -151,15 +131,23 @@ func FilesAndContents(fp string, root string) (map[string][]byte, error) {
 	return files, err
 }
 
-// IsDir checks if path is a directory
-func IsDir(path string) (bool, error) {
-	f, err := os.Stat(path)
-	return f.IsDir(), err
-}
-
-func FilepathExists(path string) bool {
-	_, err := os.Stat(path)
-	return err == nil
+// RelativeFiles returns a list of all files at the filepath relative to root
+func RelativeFiles(fp string, root string) ([]string, error) {
+	var files []string
+	fullPath := filepath.Join(root, fp)
+	logrus.Debugf("Getting files and contents at root %s", fullPath)
+	err := filepath.Walk(fullPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		relPath, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		files = append(files, relPath)
+		return nil
+	})
+	return files, err
 }
 
 func GetImageTar(from string) (string, error) {
@@ -280,4 +268,23 @@ func IgnoreFilepathForDeletion(p, directory string) bool {
 		}
 	}
 	return false
+}
+
+// FilepathExists returns true if the path exists
+func FilepathExists(path string) bool {
+	_, err := os.Stat(path)
+	return !os.IsNotExist(err)
+}
+
+// CreateFile creates a file at path with contents specified
+func CreateFile(path string, contents []byte, perm os.FileMode) error {
+	// Create directory path if it doesn't exist
+	baseDir := filepath.Dir(path)
+	if _, err := os.Stat(baseDir); os.IsNotExist(err) {
+		logrus.Debugf("baseDir %s for file %s does not exist. Creating.", baseDir, path)
+		if err := os.MkdirAll(baseDir, 0755); err != nil {
+			return err
+		}
+	}
+	return ioutil.WriteFile(path, contents, perm)
 }

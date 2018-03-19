@@ -102,8 +102,8 @@ func execute() error {
 		context := dest.GetContext(srcContext)
 
 		for _, cmd := range stage.Commands {
-			dockerCommand := commands.GetCommand(cmd, context)
-			if err := dockerCommand.ExecuteCommand(); err != nil {
+			dockerCommand, err := commands.GetCommand(cmd, srcContext)
+			if err != nil {
 				return err
 			}
 			var contents []byte
