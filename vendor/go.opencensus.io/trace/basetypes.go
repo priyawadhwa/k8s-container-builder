@@ -41,27 +41,35 @@ type Annotation struct {
 	Attributes map[string]interface{}
 }
 
-// Attribute represents a key-value pair on a span, link or annotation.
-// Construct with one of: BoolAttribute, Int64Attribute, or StringAttribute.
-type Attribute struct {
-	key   string
-	value interface{}
+// Attribute is an interface for attributes;
+// it is implemented by BoolAttribute, IntAttribute, and StringAttribute.
+type Attribute interface {
+	isAttribute()
 }
 
-// BoolAttribute returns a bool-valued attribute.
-func BoolAttribute(key string, value bool) Attribute {
-	return Attribute{key: key, value: value}
+// BoolAttribute represents a bool-valued attribute.
+type BoolAttribute struct {
+	Key   string
+	Value bool
 }
 
-// Int64Attribute returns an int64-valued attribute.
-func Int64Attribute(key string, value int64) Attribute {
-	return Attribute{key: key, value: value}
+func (b BoolAttribute) isAttribute() {}
+
+// Int64Attribute represents an int64-valued attribute.
+type Int64Attribute struct {
+	Key   string
+	Value int64
 }
 
-// StringAttribute returns a string-valued attribute.
-func StringAttribute(key string, value string) Attribute {
-	return Attribute{key: key, value: value}
+func (i Int64Attribute) isAttribute() {}
+
+// StringAttribute represents a string-valued attribute.
+type StringAttribute struct {
+	Key   string
+	Value string
 }
+
+func (s StringAttribute) isAttribute() {}
 
 // LinkType specifies the relationship between the span that had the link
 // added, and the linked span.

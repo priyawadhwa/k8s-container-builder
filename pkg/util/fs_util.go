@@ -46,6 +46,12 @@ func ExtractFileSystemFromImage(img string) error {
 	return pkgutil.GetFileSystemFromReference(ref, imgSrc, constants.RootDir, whitelist)
 }
 
+func InitializeWhitelist() error {
+	whitelist, err := fileSystemWhitelist(constants.WhitelistPath)
+	logrus.Infof("Whitelisted directories are %s", whitelist)
+	return err
+}
+
 // PathInWhitelist returns true if the path is whitelisted
 func PathInWhitelist(path, directory string) bool {
 	for _, d := range whitelist {
@@ -203,7 +209,7 @@ func SaveFilesToDir(name string, index int, files []string) error {
 	dirPath := filepath.Join(constants.KbuildDir, strconv.Itoa(index))
 	if name != "" {
 		dirPath = filepath.Join(constants.KbuildDir, name)
-		indexPath := filepath.Join(constants.WorkspaceDir, strconv.Itoa(index)+".tar")
+		indexPath := filepath.Join(constants.KbuildDir, strconv.Itoa(index))
 		if err := os.Symlink(dirPath, indexPath); err != nil {
 			return err
 		}
@@ -294,6 +300,8 @@ func IgnoreFilepath(p, directory string) bool {
 
 func IgnoreFilepathForDeletion(p, directory string) bool {
 	deleteWhitelist := append(whitelist, constants.ConfigPath)
+	deleteWhitelist = append(deleteWhitelist, constants.DockerCredentialGCRPath)
+	deleteWhitelist = append(deleteWhitelist, constants.CACerts)
 	for _, d := range deleteWhitelist {
 		dirPath := filepath.Join(directory, d)
 		if filepath.Clean(dirPath) == filepath.Clean(p) {

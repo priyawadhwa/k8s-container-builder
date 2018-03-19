@@ -448,8 +448,8 @@
     "trace",
     "trace/propagation"
   ]
-  revision = "983446b8dae3871316dc8610f7aa61e160b50b31"
-  version = "v0.5.0"
+  revision = "52b12e1eb8fdf769ad0bf5fd73a2af9484e6b196"
+  version = "v0.4.0"
 
 [[projects]]
   branch = "master"
@@ -480,7 +480,7 @@
     "proxy",
     "trace"
   ]
-  revision = "07e8617a6db2368fa55d4616f371ee1b1403c817"
+  revision = "92b859f39abd2d91a854c9f9c4621b2f5054a92d"
 
 [[projects]]
   branch = "master"
@@ -492,7 +492,7 @@
     "jws",
     "jwt"
   ]
-  revision = "fdc9e635145ae97e6c2cb777c48305600cf515cb"
+  revision = "2f32c3ac0fa4fb807a0fcefb0b6f2468a0d99bd0"
 
 [[projects]]
   branch = "master"
@@ -538,7 +538,7 @@
     "storage/v1",
     "transport/http"
   ]
-  revision = "55e9fb4044f4757138d4273ace23060d022d18f9"
+  revision = "7f657476956314fee258816aaf81c0ff65cf8bee"
 
 [[projects]]
   name = "google.golang.org/appengine"
@@ -565,7 +565,7 @@
     "googleapis/iam/v1",
     "googleapis/rpc/status"
   ]
-  revision = "f8c8703595236ae70fdf8789ecb656ea0bcdcf46"
+  revision = "df60624c1e9b9d2973e889c7a1cff73155da81c4"
 
 [[projects]]
   name = "google.golang.org/grpc"

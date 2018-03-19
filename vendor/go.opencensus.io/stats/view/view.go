@@ -83,26 +83,29 @@ func (v *View) same(other *View) bool {
 
 // canonicalized returns a validated View canonicalized by setting explicit
 // defaults for Name and Description and sorting the TagKeys
-func (v *View) canonicalize() error {
+func (v *View) canonicalized() (*View, error) {
 	if v.Measure == nil {
-		return fmt.Errorf("cannot subscribe view %q: measure not set", v.Name)
+		return nil, fmt.Errorf("cannot subscribe view %q: measure not set", v.Name)
 	}
 	if v.Aggregation == nil {
-		return fmt.Errorf("cannot subscribe view %q: aggregation not set", v.Name)
+		return nil, fmt.Errorf("cannot subscribe view %q: aggregation not set", v.Name)
 	}
-	if v.Name == "" {
-		v.Name = v.Measure.Name()
+	vc := *v
+	if vc.Name == "" {
+		vc.Name = vc.Measure.Name()
 	}
-	if v.Description == "" {
-		v.Description = v.Measure.Description()
+	if vc.Description == "" {
+		vc.Description = vc.Measure.Description()
 	}
-	if err := checkViewName(v.Name); err != nil {
-		return err
+	if err := checkViewName(vc.Name); err != nil {
+		return nil, err
 	}
-	sort.Slice(v.TagKeys, func(i, j int) bool {
-		return v.TagKeys[i].Name() < v.TagKeys[j].Name()
+	vc.TagKeys = make([]tag.Key, len(v.TagKeys))
+	copy(vc.TagKeys, v.TagKeys)
+	sort.Slice(vc.TagKeys, func(i, j int) bool {
+		return vc.TagKeys[i].Name() < vc.TagKeys[j].Name()
 	})
-	return nil
+	return &vc, nil
 }
 
 // viewInternal is the internal representation of a View.
@@ -113,8 +116,12 @@ type viewInternal struct {
 }
 
 func newViewInternal(v *View) (*viewInternal, error) {
+	vc, err := v.canonicalized()
+	if err != nil {
+		return nil, err
+	}
 	return &viewInternal{
-		view:      v,
+		view:      vc,
 		collector: &collector{make(map[string]AggregationData), v.Aggregation},
 	}, nil
 }

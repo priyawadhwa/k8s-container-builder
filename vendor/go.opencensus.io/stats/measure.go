@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-	"sync/atomic"
 
 	"go.opencensus.io/stats/internal"
 )
@@ -38,25 +37,13 @@ type Measure interface {
 	Name() string
 	Description() string
 	Unit() string
-
-	subscribe()
-	subscribed() bool
 }
 
 type measure struct {
-	subs int32 // access atomically
-
 	name        string
 	description string
 	unit        string
-}
-
-func (m *measure) subscribe() {
-	atomic.StoreInt32(&m.subs, 1)
-}
-
-func (m *measure) subscribed() bool {
-	return atomic.LoadInt32(&m.subs) == 1
+	views       int32
 }
 
 // Name returns the name of the measure.
@@ -75,16 +62,13 @@ func (m *measure) Unit() string {
 }
 
 var (
-	mu       sync.RWMutex
-	measures = make(map[string]Measure)
-)
+	mu           sync.RWMutex
+	measures     = make(map[string]Measure)
+	errDuplicate = errors.New("duplicate measure name")
 
-var (
-	errDuplicate          = errors.New("duplicate measure name")
 	errMeasureNameTooLong = fmt.Errorf("measure name cannot be longer than %v", internal.MaxNameLength)
 )
 
-// FindMeasure finds the Measure instance, if any, associated with the given name.
 func FindMeasure(name string) Measure {
 	mu.RLock()
 	m := measures[name]
@@ -107,18 +91,8 @@ func register(m Measure) (Measure, error) {
 // provides methods to create measurements of their kind. For example, Int64Measure
 // provides M to convert an int64 into a measurement.
 type Measurement struct {
-	v float64
-	m Measure
-}
-
-// Value returns the value of the Measurement as a float64.
-func (m Measurement) Value() float64 {
-	return m.v
-}
-
-// Measure returns the Measure from which this Measurement was created.
-func (m Measurement) Measure() Measure {
-	return m.m
+	Value   float64
+	Measure Measure
 }
 
 func checkName(name string) error {

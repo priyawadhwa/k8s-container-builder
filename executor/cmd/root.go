@@ -92,20 +92,25 @@ func execute() error {
 		return err
 	}
 
+	if err := util.InitializeWhitelist(); err != nil {
+		return err
+	}
+
 	var finalImage *img.MutableSource
 
 	for index, stage := range stages {
 		baseImage := stage.BaseName
 		finalStage := (index + 1) == len(stages)
-		if finalStage {
-			finalImage, err = image.NewSourceImage(baseImage)
-		}
 		if err != nil {
 			return err
 		}
+		env.SetEnvironmentVariables()
 		sourceImage, err := image.NewSourceImage(baseImage)
 		if err != nil {
 			return err
+		}
+		if finalStage {
+			finalImage = sourceImage
 		}
 		logrus.Infof("Extracting filesystem for %s...", baseImage)
 		if err := util.ExtractFileSystemFromImage(baseImage); err != nil {
@@ -150,8 +155,6 @@ func execute() error {
 			}
 		}
 		if finalStage {
-			// Save environment variables
-			env.SetEnvironmentVariables()
 			continue
 		}
 		// Now package up filesystem as tarball
@@ -164,9 +167,12 @@ func execute() error {
 			return err
 		}
 		// Then, delete filesystem
-		util.DeleteFileSystem()
+		if err := util.DeleteFileSystem(); err != nil {
+			return err
+		}
 	}
 
 	// Push the image
+	env.SetEnvironmentVariables()
 	return image.PushImage(finalImage, destination)
 }

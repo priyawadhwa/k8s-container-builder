@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"go.opencensus.io/stats"
-	"go.opencensus.io/stats/internal"
 	"go.opencensus.io/tag"
 )
 
@@ -58,7 +57,6 @@ func (cmd *subscribeToViewReq) handleCommand(w *worker) {
 			errstr = append(errstr, fmt.Sprintf("%s: %v", view.Name, err))
 			continue
 		}
-		internal.SubscriptionReporter(view.Measure.Name())
 		vi.subscribe()
 	}
 	if len(errstr) > 0 {
@@ -137,12 +135,9 @@ type recordReq struct {
 
 func (cmd *recordReq) handleCommand(w *worker) {
 	for _, m := range cmd.ms {
-		if (m == stats.Measurement{}) { // not subscribed
-			continue
-		}
-		ref := w.getMeasureRef(m.Measure().Name())
+		ref := w.getMeasureRef(m.Measure.Name())
 		for v := range ref.views {
-			v.addSample(cmd.tm, m.Value())
+			v.addSample(cmd.tm, m.Value)
 		}
 	}
 }

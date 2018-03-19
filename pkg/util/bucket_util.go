@@ -22,7 +22,7 @@ import (
 	"github.com/GoogleCloudPlatform/k8s-container-builder/pkg/constants"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
-	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 )
@@ -34,7 +34,7 @@ func UnpackTarFromGCSBucket(bucketName, directory string) error {
 	if err != nil {
 		return err
 	}
-	logrus.Debug("Unpacking source context tar...")
+	logrus.Debugf("Unpacking source context from %s...", tarPath)
 	// Now, unpack the tar to a build context, and return the path to the build context
 	file, err := os.Open(tarPath)
 	if err != nil {
@@ -65,15 +65,14 @@ func getTarFromBucket(bucketName, directory string) (string, error) {
 		return "", err
 	}
 	defer reader.Close()
-
-	tarPath := filepath.Join(directory, constants.KbuildTar)
-	f, err := os.Create(tarPath)
+	contents, err := ioutil.ReadAll(reader)
 	if err != nil {
-		return "", nil
+		return "", err
+	}
+	tarPath := filepath.Join(directory, constants.KbuildTar)
+	if err := CreateFile(tarPath, contents, 0600); err != nil {
+		return "", err
 	}
 	logrus.Debugf("Copied tarball %s from GCS bucket %s to %s", constants.KbuildTar, bucketName, tarPath)
-	defer f.Close()
-
-	_, err = io.Copy(f, reader)
-	return tarPath, err
+	return tarPath, nil
 }

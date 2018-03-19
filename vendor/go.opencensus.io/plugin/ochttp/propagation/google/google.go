@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package google is deprecated: Use go.opencensus.io/exporter/stackdriver/propagation.
+// Package google contains a propagation.HTTPFormat implementation
+// for Google Cloud Trace and Stackdriver.
 package google // import "go.opencensus.io/plugin/ochttp/propagation/google"
 
 import (
@@ -24,6 +25,7 @@ import (
 	"strings"
 
 	"go.opencensus.io/trace"
+	"go.opencensus.io/trace/propagation"
 )
 
 const (
@@ -31,8 +33,11 @@ const (
 	httpHeader        = `X-Cloud-Trace-Context`
 )
 
-// Deprecated: Use go.opencensus.io/exporter/stackdriver/propagation.HTTPFormat
+// HTTPFormat implements propagation.HTTPFormat to propagate
+// traces in HTTP headers for Google Cloud Platform and Stackdriver Trace.
 type HTTPFormat struct{}
+
+var _ propagation.HTTPFormat = (*HTTPFormat)(nil)
 
 // SpanContextFromRequest extracts a Stackdriver Trace span context from incoming requests.
 func (f *HTTPFormat) SpanContextFromRequest(req *http.Request) (sc trace.SpanContext, ok bool) {

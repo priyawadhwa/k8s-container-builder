@@ -53,9 +53,15 @@ func Test_fileSystemWhitelist(t *testing.T) {
 }
 
 var tests = []struct {
+<<<<<<< HEAD
 	files         map[string]string
 	directory     string
 	expectedFiles []string
+=======
+	files       map[string]string
+	directory   string
+	expectedMap map[string][]byte
+>>>>>>> 10866ca88533a3112670a3e1eb162a5ddc266ec6
 }{
 	{
 		files: map[string]string{
@@ -64,10 +70,17 @@ var tests = []struct {
 			"/kbuild/file":     "file",
 		},
 		directory: "/workspace/foo/",
+<<<<<<< HEAD
 		expectedFiles: []string{
 			"workspace/foo/a",
 			"workspace/foo/b",
 			"workspace/foo",
+=======
+		expectedMap: map[string][]byte{
+			"workspace/foo/a": []byte("baz1"),
+			"workspace/foo/b": []byte("baz2"),
+			"workspace/foo":   nil,
+>>>>>>> 10866ca88533a3112670a3e1eb162a5ddc266ec6
 		},
 	},
 	{
@@ -75,8 +88,13 @@ var tests = []struct {
 			"/workspace/foo/a": "baz1",
 		},
 		directory: "/workspace/foo/a",
+<<<<<<< HEAD
 		expectedFiles: []string{
 			"workspace/foo/a",
+=======
+		expectedMap: map[string][]byte{
+			"workspace/foo/a": []byte("baz1"),
+>>>>>>> 10866ca88533a3112670a3e1eb162a5ddc266ec6
 		},
 	},
 	{
@@ -87,12 +105,21 @@ var tests = []struct {
 			"/kbuild/file":     "file",
 		},
 		directory: "/workspace",
+<<<<<<< HEAD
 		expectedFiles: []string{
 			"workspace/foo/a",
 			"workspace/foo/b",
 			"workspace/baz",
 			"workspace",
 			"workspace/foo",
+=======
+		expectedMap: map[string][]byte{
+			"workspace/foo/a": []byte("baz1"),
+			"workspace/foo/b": []byte("baz2"),
+			"workspace/baz":   []byte("hey"),
+			"workspace":       nil,
+			"workspace/foo":   nil,
+>>>>>>> 10866ca88533a3112670a3e1eb162a5ddc266ec6
 		},
 	},
 	{
@@ -102,6 +129,7 @@ var tests = []struct {
 			"/kbuild/file":     "file",
 		},
 		directory: "",
+<<<<<<< HEAD
 		expectedFiles: []string{
 			"workspace/foo/a",
 			"workspace/foo/b",
@@ -110,11 +138,25 @@ var tests = []struct {
 			"workspace/foo",
 			"kbuild",
 			".",
+=======
+		expectedMap: map[string][]byte{
+			"workspace/foo/a": []byte("baz1"),
+			"workspace/foo/b": []byte("baz2"),
+			"kbuild/file":     []byte("file"),
+			"workspace":       nil,
+			"workspace/foo":   nil,
+			"kbuild":          nil,
+			".":               nil,
+>>>>>>> 10866ca88533a3112670a3e1eb162a5ddc266ec6
 		},
 	},
 }
 
+<<<<<<< HEAD
 func Test_RelativeFiles(t *testing.T) {
+=======
+func Test_FilesAndContents(t *testing.T) {
+>>>>>>> 10866ca88533a3112670a3e1eb162a5ddc266ec6
 	for _, test := range tests {
 		testDir, err := ioutil.TempDir("", "")
 		if err != nil {
@@ -124,9 +166,14 @@ func Test_RelativeFiles(t *testing.T) {
 		if err := testutil.SetupFiles(testDir, test.files); err != nil {
 			t.Fatalf("err setting up files: %v", err)
 		}
+<<<<<<< HEAD
 		actualFiles, err := RelativeFiles(test.directory, testDir)
 		sort.Strings(actualFiles)
 		sort.Strings(test.expectedFiles)
 		testutil.CheckErrorAndDeepEqual(t, false, err, test.expectedFiles, actualFiles)
+=======
+		fileMap, err := FilesAndContents(test.directory, testDir)
+		testutil.CheckErrorAndDeepEqual(t, false, err, test.expectedMap, fileMap)
+>>>>>>> 10866ca88533a3112670a3e1eb162a5ddc266ec6
 	}
 }

@@ -56,3 +56,7 @@ out/kbuild: $(GO_FILES)
 .PHONY: test
 test: out/executor
 	@ ./test.sh
+
+.PHONY: integration-test
+integration-test: out/executor 
+	@ ./integration-test.sh

@@ -2513,7 +2513,8 @@ type BucketAccessControlsPatchCall struct {
 	header_             http.Header
 }
 
-// Patch: Patches an ACL entry on the specified bucket.
+// Patch: Updates an ACL entry on the specified bucket. This method
+// supports patch semantics.
 func (r *BucketAccessControlsService) Patch(bucket string, entity string, bucketaccesscontrol *BucketAccessControl) *BucketAccessControlsPatchCall {
 	c := &BucketAccessControlsPatchCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	c.bucket = bucket
@@ -2616,7 +2617,7 @@ func (c *BucketAccessControlsPatchCall) Do(opts ...googleapi.CallOption) (*Bucke
 	}
 	return ret, nil
 	// {
-	//   "description": "Patches an ACL entry on the specified bucket.",
+	//   "description": "Updates an ACL entry on the specified bucket. This method supports patch semantics.",
 	//   "httpMethod": "PATCH",
 	//   "id": "storage.bucketAccessControls.patch",
 	//   "parameterOrder": [
@@ -5523,7 +5524,8 @@ type DefaultObjectAccessControlsPatchCall struct {
 	header_             http.Header
 }
 
-// Patch: Patches a default object ACL entry on the specified bucket.
+// Patch: Updates a default object ACL entry on the specified bucket.
+// This method supports patch semantics.
 func (r *DefaultObjectAccessControlsService) Patch(bucket string, entity string, objectaccesscontrol *ObjectAccessControl) *DefaultObjectAccessControlsPatchCall {
 	c := &DefaultObjectAccessControlsPatchCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	c.bucket = bucket
@@ -5626,7 +5628,7 @@ func (c *DefaultObjectAccessControlsPatchCall) Do(opts ...googleapi.CallOption) 
 	}
 	return ret, nil
 	// {
-	//   "description": "Patches a default object ACL entry on the specified bucket.",
+	//   "description": "Updates a default object ACL entry on the specified bucket. This method supports patch semantics.",
 	//   "httpMethod": "PATCH",
 	//   "id": "storage.defaultObjectAccessControls.patch",
 	//   "parameterOrder": [
@@ -7091,7 +7093,8 @@ type ObjectAccessControlsPatchCall struct {
 	header_             http.Header
 }
 
-// Patch: Patches an ACL entry on the specified object.
+// Patch: Updates an ACL entry on the specified object. This method
+// supports patch semantics.
 func (r *ObjectAccessControlsService) Patch(bucket string, object string, entity string, objectaccesscontrol *ObjectAccessControl) *ObjectAccessControlsPatchCall {
 	c := &ObjectAccessControlsPatchCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	c.bucket = bucket
@@ -7204,7 +7207,7 @@ func (c *ObjectAccessControlsPatchCall) Do(opts ...googleapi.CallOption) (*Objec
 	}
 	return ret, nil
 	// {
-	//   "description": "Patches an ACL entry on the specified object.",
+	//   "description": "Updates an ACL entry on the specified object. This method supports patch semantics.",
 	//   "httpMethod": "PATCH",
 	//   "id": "storage.objectAccessControls.patch",
 	//   "parameterOrder": [
