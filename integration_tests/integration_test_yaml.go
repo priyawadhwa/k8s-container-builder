@@ -58,19 +58,19 @@ var structureTests = []struct {
 	dockerBuildContext    string
 	repo                  string
 }{
+	// {
+	// 	description:           "test env",
+	// 	dockerfilePath:        "/workspace/integration_tests/dockerfiles/Dockerfile_test_env",
+	// 	repo:                  "test-env",
+	// 	dockerBuildContext:    "/workspace/integration_tests/dockerfiles/",
+	// 	structureTestYamlPath: "/workspace/integration_tests/dockerfiles/test_env.yaml",
+	// },
 	{
-		description:           "test env",
-		dockerfilePath:        "/workspace/integration_tests/dockerfiles/Dockerfile_test_env",
-		repo:                  "test-env",
+		description:           "test metadata",
+		dockerfilePath:        "/workspace/integration_tests/dockerfiles/Dockerfile_test_metadata",
+		repo:                  "test-metadata",
 		dockerBuildContext:    "/workspace/integration_tests/dockerfiles/",
-		structureTestYamlPath: "/workspace/integration_tests/dockerfiles/test_env.yaml",
-	},
-	{
-		description:           "test cmd",
-		dockerfilePath:        "/workspace/integration_tests/dockerfiles/Dockerfile_test_cmd",
-		repo:                  "test-cmd",
-		dockerBuildContext:    "/workspace/integration_tests/dockerfiles/",
-		structureTestYamlPath: "/workspace/integration_tests/dockerfiles/test_cmd.yaml",
+		structureTestYamlPath: "/workspace/integration_tests/dockerfiles/test_metadata.yaml",
 	},
 }
 
