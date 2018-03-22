@@ -18,8 +18,14 @@ package util
 
 import (
 	"archive/tar"
+	// "compress/bzip2"
+	"compress/gzip"
+	pkgutil "github.com/GoogleCloudPlatform/container-diff/pkg/util"
+	"github.com/docker/docker/pkg/archive"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"io"
+	"io/ioutil"
 	"os"
 	"syscall"
 )
@@ -85,4 +91,77 @@ func checkHardlink(p string, i os.FileInfo) (bool, string) {
 		}
 	}
 	return hardlink, linkDst
+}
+
+//UnpackLocalTarArchive unpacks the tar archive at path to the directory dest
+// Returns true if the path was acutally unpacked
+func UnpackLocalTarArchive(path, dest string) error {
+	// First, we need to check if the path is a local tar archive
+	if fileIsCompressedTar(path) {
+		file, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		gzr, err := gzip.NewReader(file)
+		if err != nil {
+			return err
+		}
+		defer gzr.Close()
+		return pkgutil.UnTar(gzr, dest, nil)
+	}
+	if fileIsUncompressedTar(path) {
+		file, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		return pkgutil.UnTar(file, dest, nil)
+	}
+	return errors.New("path does not lead to local tar archive")
+}
+
+//IsFileLocalTarArchive returns true if the file is a local tar archive
+func IsFileLocalTarArchive(src string) bool {
+	return fileIsCompressedTar(src) || fileIsUncompressedTar(src)
+}
+
+func fileIsCompressedTar(src string) bool {
+	r, err := os.Open(src)
+	if err != nil {
+		return false
+	}
+	defer r.Close()
+	buf, err := ioutil.ReadAll(r)
+	if err != nil {
+		return false
+	}
+	compressionLevel := archive.DetectCompression(buf)
+	return (compressionLevel > 0)
+}
+
+func fileIsUncompressedTar(src string) bool {
+	r, err := os.Open(src)
+	defer r.Close()
+	if err != nil {
+		return false
+	}
+	fi, err := os.Stat(src)
+	if err != nil {
+		return false
+	}
+	if fi.Size() == 0 {
+		return false
+	}
+	tr := tar.NewReader(r)
+	if tr == nil {
+		return false
+	}
+	for {
+		_, err := tr.Next()
+		if err != nil {
+			return false
+		}
+		return true
+	}
 }

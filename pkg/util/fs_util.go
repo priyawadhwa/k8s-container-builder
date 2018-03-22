@@ -23,6 +23,7 @@ import (
 	"github.com/containers/image/docker"
 	"github.com/sirupsen/logrus"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -117,6 +118,17 @@ func RelativeFiles(fp string, root string) ([]string, error) {
 	return files, err
 }
 
+// Files returns a list of all files rooted at root
+func Files(root string) ([]string, error) {
+	var files []string
+	logrus.Debugf("Getting files and contents at root %s", root)
+	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		files = append(files, path)
+		return err
+	})
+	return files, err
+}
+
 // FilepathExists returns true if the path exists
 func FilepathExists(path string) bool {
 	_, err := os.Stat(path)
@@ -141,4 +153,14 @@ func CreateFile(path string, reader io.Reader, perm os.FileMode) error {
 		return err
 	}
 	return dest.Chmod(perm)
+}
+
+// DownloadFileFromURLToDest downloads a file from a URL to the given destination
+func DownloadFileFromURLToDest(url, dest string) error {
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	return CreateFile(dest, resp.Body, 0600)
 }
