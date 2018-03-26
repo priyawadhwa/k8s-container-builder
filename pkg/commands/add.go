@@ -54,11 +54,47 @@ func (a *AddCommand) ExecuteCommand(config *manifest.Schema2Config) error {
 		return err
 	}
 	dest = resolvedEnvs[len(a.cmd.SourcesAndDest)-1]
+	if !filepath.IsAbs(dest) {
+		dest = filepath.Join(config.WorkingDir, dest)
+	}
 	// Get a map of [src]:[files rooted at src]
 	srcMap, err := util.ResolveSources(resolvedEnvs, a.buildcontext)
 	if err != nil {
 		return err
 	}
+	// If any of the sources are local tar archives:
+	// 	1. Unpack them to the specified destination
+	// 	2. Remove them as sources that need to be copied over
+
+	for _, files := range srcMap {
+		for _, file := range files {
+			// If file is a local tar archive, then we unpack it to dest
+			filePath := filepath.Join(a.buildcontext, file)
+			isFilenameSource, err := isFilenameSource(srcMap, file)
+			if err != nil {
+				return err
+			}
+			if isFilenameSource && util.IsFileLocalTarArchive(filePath) {
+				logrus.Infof("Unpacking local tar archive %s to %s", file, dest)
+				if err := util.UnpackLocalTarArchive(filePath, dest); err != nil {
+					return err
+				}
+				// Add the unpacked files to the snapshotter
+				filesAdded, err := util.Files(dest)
+				if err != nil {
+					return err
+				}
+				logrus.Debugf("Added %v from local tar archive %s", filesAdded, file)
+				a.snapshotFiles = append(a.snapshotFiles, filesAdded...)
+			}
+		}
+	}
+
+	// If any of the sources is a remote file URL:
+	// 	1. Copy over the file to the specified destination
+	// 	2. Remove as a source that needs to be copied over
+
+	// With the remaining "normal" sources, create and execute a standard copy command
 
 	// For each source, iterate through each file within and Add it over
 	for src, files := range srcMap {
