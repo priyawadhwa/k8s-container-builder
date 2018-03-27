@@ -27,6 +27,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 var whitelist = []string{"/kbuild"}
@@ -155,12 +156,26 @@ func CreateFile(path string, reader io.Reader, perm os.FileMode) error {
 	return dest.Chmod(perm)
 }
 
-// DownloadFileFromURLToDest downloads a file from a URL to the given destination
-func DownloadFileFromURLToDest(url, dest string) error {
-	resp, err := http.Get(url)
+// DownloadFileToDest downloads the file at rawurl to the given dest for the ADD command
+// From add command docs:
+// 	1. If <src> is a remote file URL:
+// 		- destination will have permissions of 0600
+// 		- If remote file has HTTP Last-Modified header, we set the mtime of the file to that timestamp
+func DownloadFileToDest(rawurl, dest string) error {
+	resp, err := http.Get(rawurl)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
-	return CreateFile(dest, resp.Body, 0600)
+	if err := CreateFile(dest, resp.Body, 0600); err != nil {
+		return err
+	}
+	mTime := time.Time{}
+	lastMod := resp.Header.Get("Last-Modified")
+	if lastMod != "" {
+		if parsedMTime, err := http.ParseTime(lastMod); err == nil {
+			mTime = parsedMTime
+		}
+	}
+	return os.Chtimes(dest, mTime, mTime)
 }

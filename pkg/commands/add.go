@@ -21,7 +21,6 @@ import (
 	"github.com/containers/image/manifest"
 	"github.com/docker/docker/builder/dockerfile/instructions"
 	"github.com/sirupsen/logrus"
-	"os"
 	"path/filepath"
 	"strings"
 )
@@ -40,7 +39,7 @@ type AddCommand struct {
 // 		- mtime should not be included in determining whether the file has been changed
 // 		- If dest doesn't end with a slash, the filepath is inferred to be <dest>/<filename>
 // 	2. If <src> is a local tar archive:
-// 		-If <src> is a local tar archive, it is unpacked at the dest with, like 'tar -x' would
+// 		-If <src> is a local tar archive, it is unpacked at the dest, as 'tar -x' would
 func (a *AddCommand) ExecuteCommand(config *manifest.Schema2Config) error {
 	srcs := a.cmd.SourcesAndDest[:len(a.cmd.SourcesAndDest)-1]
 	dest := a.cmd.SourcesAndDest[len(a.cmd.SourcesAndDest)-1]
@@ -49,14 +48,11 @@ func (a *AddCommand) ExecuteCommand(config *manifest.Schema2Config) error {
 	logrus.Infof("dest: %s", dest)
 
 	// First, resolve any environment replacement
-	resolvedEnvs, err := util.ResolveEnvironmentReplacementList(a.AddToString(), a.cmd.SourcesAndDest, config.Env, true)
+	resolvedEnvs, err := util.ResolveEnvironmentReplacementList(a.cmd.SourcesAndDest, config.Env, true)
 	if err != nil {
 		return err
 	}
-	dest = resolvedEnvs[len(a.cmd.SourcesAndDest)-1]
-	if !filepath.IsAbs(dest) {
-		dest = filepath.Join(config.WorkingDir, dest)
-	}
+	dest = resolvedEnvs[len(resolvedEnvs)-1]
 	// Get a map of [src]:[files rooted at src]
 	srcMap, err := util.ResolveSources(resolvedEnvs, a.buildcontext)
 	if err != nil {
@@ -65,8 +61,9 @@ func (a *AddCommand) ExecuteCommand(config *manifest.Schema2Config) error {
 	// If any of the sources are local tar archives:
 	// 	1. Unpack them to the specified destination
 	// 	2. Remove them as sources that need to be copied over
-
-	for _, files := range srcMap {
+	// If any of the sources is a remote file URL"
+	//	1. Download and copy it to the specifed dest
+	for src, files := range srcMap {
 		for _, file := range files {
 			// If file is a local tar archive, then we unpack it to dest
 			filePath := filepath.Join(a.buildcontext, file)
@@ -74,7 +71,15 @@ func (a *AddCommand) ExecuteCommand(config *manifest.Schema2Config) error {
 			if err != nil {
 				return err
 			}
-			if isFilenameSource && util.IsFileLocalTarArchive(filePath) {
+			if util.IsSrcRemoteFileURL(file) {
+				urlDest := util.URLDestinationFilepath(file, dest, config.WorkingDir)
+				logrus.Infof("Adding remote URL %s to %s", file, urlDest)
+				if err := util.DownloadFileToDest(file, urlDest); err != nil {
+					return err
+				}
+				a.snapshotFiles = append(a.snapshotFiles, urlDest)
+				delete(srcMap, src)
+			} else if isFilenameSource && util.IsFileLocalTarArchive(filePath) {
 				logrus.Infof("Unpacking local tar archive %s to %s", file, dest)
 				if err := util.UnpackLocalTarArchive(filePath, dest); err != nil {
 					return err
@@ -86,72 +91,28 @@ func (a *AddCommand) ExecuteCommand(config *manifest.Schema2Config) error {
 				}
 				logrus.Debugf("Added %v from local tar archive %s", filesAdded, file)
 				a.snapshotFiles = append(a.snapshotFiles, filesAdded...)
+				delete(srcMap, src)
 			}
 		}
 	}
-
-	// If any of the sources is a remote file URL:
-	// 	1. Copy over the file to the specified destination
-	// 	2. Remove as a source that needs to be copied over
-
 	// With the remaining "normal" sources, create and execute a standard copy command
-
-	// For each source, iterate through each file within and Add it over
-	for src, files := range srcMap {
-		for _, file := range files {
-			filePath := filepath.Join(a.buildcontext, file)
-			fi, err := os.Stat(filePath)
-			if err != nil {
-				return err
-			}
-			// If file is a local tar archive, then we unpack it to dest
-			isFilenameSource, err := isFilenameSource(srcMap, file)
-			if err != nil {
-				return err
-			}
-			if isFilenameSource && util.IsFileLocalTarArchive(filePath) {
-				logrus.Infof("Unpacking local tar archive %s to %s", file, dest)
-				if !filepath.IsAbs(dest) {
-					dest = filepath.Join(config.WorkingDir, dest)
-				}
-				if err := util.UnpackLocalTarArchive(filePath, dest); err != nil {
-					return err
-				}
-				// Add the unpacked files to the snapshotter
-				filesAdded, err := util.Files(dest)
-				if err != nil {
-					return err
-				}
-				logrus.Infof("Added %v from local tar archive %s", filesAdded, file)
-				a.snapshotFiles = append(a.snapshotFiles, filesAdded...)
-				continue
-			}
-			destPath, err := util.DestinationFilepath(file, src, dest, config.WorkingDir, a.buildcontext)
-			if err != nil {
-				return err
-			}
-			// If source file is a directory, we want to create a directory ...
-			if fi.IsDir() {
-				logrus.Infof("Creating directory %s", destPath)
-				if err := os.MkdirAll(destPath, fi.Mode()); err != nil {
-					return err
-				}
-			} else {
-				// ... Else, we want to Add over a file
-				logrus.Infof("Adding file %s to %s", file, destPath)
-				srcFile, err := os.Open(filepath.Join(a.buildcontext, file))
-				if err != nil {
-					return err
-				}
-				defer srcFile.Close()
-				if err := util.CreateFile(destPath, srcFile, fi.Mode()); err != nil {
-					return err
-				}
-			}
-			// Append the destination file to the list of files that should be snapshotted later
-			a.snapshotFiles = append(a.snapshotFiles, destPath)
-		}
+	if len(srcMap) == 0 {
+		return nil
 	}
+	var regularSrcs []string
+	for src := range srcMap {
+		regularSrcs = append(regularSrcs, src)
+	}
+	copyCmd := CopyCommand{
+		cmd: &instructions.CopyCommand{
+			SourcesAndDest: append(regularSrcs, dest),
+		},
+		buildcontext: a.buildcontext,
+	}
+	if err := copyCmd.ExecuteCommand(config); err != nil {
+		return err
+	}
+	a.snapshotFiles = append(a.snapshotFiles, copyCmd.snapshotFiles...)
 	return nil
 }
 
@@ -166,12 +127,6 @@ func isFilenameSource(srcMap map[string][]string, fileName string) (bool, error)
 		}
 	}
 	return false, nil
-}
-
-// AddToString returns a string of the command
-func (a *AddCommand) AddToString() string {
-	Add := []string{"ADD"}
-	return strings.Join(append(Add, a.cmd.SourcesAndDest...), " ")
 }
 
 // FilesToSnapshot should return an empty array if still nil; no files were changed
