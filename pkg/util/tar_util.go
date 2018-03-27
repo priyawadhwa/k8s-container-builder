@@ -18,7 +18,7 @@ package util
 
 import (
 	"archive/tar"
-	// "compress/bzip2"
+	"compress/bzip2"
 	"compress/gzip"
 	pkgutil "github.com/GoogleCloudPlatform/container-diff/pkg/util"
 	"github.com/docker/docker/pkg/archive"
@@ -97,18 +97,23 @@ func checkHardlink(p string, i os.FileInfo) (bool, string) {
 // Returns true if the path was acutally unpacked
 func UnpackLocalTarArchive(path, dest string) error {
 	// First, we need to check if the path is a local tar archive
-	if fileIsCompressedTar(path) {
+	if compressed, compressionLevel := fileIsCompressedTar(path); compressed {
 		file, err := os.Open(path)
 		if err != nil {
 			return err
 		}
 		defer file.Close()
-		gzr, err := gzip.NewReader(file)
-		if err != nil {
-			return err
+		if compressionLevel == archive.Gzip {
+			gzr, err := gzip.NewReader(file)
+			if err != nil {
+				return err
+			}
+			defer gzr.Close()
+			return pkgutil.UnTar(gzr, dest, nil)
+		} else if compressionLevel == archive.Bzip2 {
+			bzr := bzip2.NewReader(file)
+			return pkgutil.UnTar(bzr, dest, nil)
 		}
-		defer gzr.Close()
-		return pkgutil.UnTar(gzr, dest, nil)
 	}
 	if fileIsUncompressedTar(path) {
 		file, err := os.Open(path)
@@ -123,21 +128,23 @@ func UnpackLocalTarArchive(path, dest string) error {
 
 //IsFileLocalTarArchive returns true if the file is a local tar archive
 func IsFileLocalTarArchive(src string) bool {
-	return fileIsCompressedTar(src) || fileIsUncompressedTar(src)
+	compressed, _ := fileIsCompressedTar(src)
+	uncompressed := fileIsUncompressedTar(src)
+	return compressed || uncompressed
 }
 
-func fileIsCompressedTar(src string) bool {
+func fileIsCompressedTar(src string) (bool, archive.Compression) {
 	r, err := os.Open(src)
 	if err != nil {
-		return false
+		return false, -1
 	}
 	defer r.Close()
 	buf, err := ioutil.ReadAll(r)
 	if err != nil {
-		return false
+		return false, -1
 	}
 	compressionLevel := archive.DetectCompression(buf)
-	return (compressionLevel > 0)
+	return (compressionLevel > 0), compressionLevel
 }
 
 func fileIsUncompressedTar(src string) bool {

@@ -3,17 +3,8 @@ FROM gcr.io/google-appengine/debian9:latest
 ADD context/foo foo
 ADD context/foo /foodir/
 ADD context/bar/b* bar/
-ADD context/fo? /foo2
-ADD context/bar/doesnotexist* context/foo hello
-ADD ./context/empty /empty
-ADD ./ dir/
 ADD . newdir
-ADD context/bar /baz/
 ADD ["context/foo", "/tmp/foo" ]
-ADD context/b* /baz/
-ADD context/foo context/bar/ba? /test/
-ADD context/arr[[]0].txt /mydir/
-ADD context/bar/bat .
 
 # Next, make sure environment replacement works
 ENV contextenv ./context
@@ -22,7 +13,5 @@ ADD $contextenv/* /tmp/${contextenv}/
 # Now, test extracting local tar archives
 ADD context/tars/file* /tars/
 ADD context/tars/file.tar /tars_again
-# Finally, test ADDing over some remote URLs
-# docker-credential-gcr specifies mtime, so this should be the same between docker and kbuild built images
-ADD https://github.com/GoogleCloudPlatform/docker-credential-gcr/releases/download/v1.4.3/docker-credential-gcr_linux_386-1.4.3.tar.gz context/foo . /test/all/
-ADD https://github.com/GoogleCloudPlatform/docker-credential-gcr/releases/download/v1.4.3/docker-credential-gcr_linux_386-1.4.3.tar.gz /docker-credential-gcr
+# Finally, test ADDing over a remote URL
+ADD https://github.com/GoogleCloudPlatform/docker-credential-gcr/releases/download/v1.4.3/docker-credential-gcr_linux_386-1.4.3.tar.gz context/foo /test/all/
