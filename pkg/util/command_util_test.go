@@ -209,6 +209,39 @@ func Test_DestinationFilepath(t *testing.T) {
 	}
 }
 
+var urlDestFilepathTests = []struct {
+	url          string
+	cwd          string
+	dest         string
+	expectedDest string
+}{
+	{
+		url:          "https://something/something",
+		cwd:          "/test",
+		dest:         ".",
+		expectedDest: "/test/something",
+	},
+	{
+		url:          "https://something/something",
+		cwd:          "/cwd",
+		dest:         "/test",
+		expectedDest: "/test",
+	},
+	{
+		url:          "https://something/something",
+		cwd:          "/test",
+		dest:         "/dest/",
+		expectedDest: "/dest/something",
+	},
+}
+
+func Test_UrlDestFilepath(t *testing.T) {
+	for _, test := range urlDestFilepathTests {
+		actualDest := URLDestinationFilepath(test.url, test.dest, test.cwd)
+		testutil.CheckErrorAndDeepEqual(t, false, nil, test.expectedDest, actualDest)
+	}
+}
+
 var matchSourcesTests = []struct {
 	srcs          []string
 	files         []string

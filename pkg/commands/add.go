@@ -60,9 +60,10 @@ func (a *AddCommand) ExecuteCommand(config *manifest.Schema2Config) error {
 	}
 	// If any of the sources are local tar archives:
 	// 	1. Unpack them to the specified destination
-	// 	2. Remove them as sources that need to be copied over
-	// If any of the sources is a remote file URL"
+	// 	2. Remove it as a source that needs to be copied over
+	// If any of the sources is a remote file URL:
 	//	1. Download and copy it to the specifed dest
+	//  2. Remove it as a source that needs to be copied
 	for src, files := range srcMap {
 		for _, file := range files {
 			// If file is a local tar archive, then we unpack it to dest
