@@ -36,7 +36,6 @@ type AddCommand struct {
 // 	1. If <src> is a remote file URL:
 // 		- destination will have permissions of 0600
 // 		- If remote file has HTTP Last-Modified header, we set the mtime of the file to that timestamp
-// 		- mtime should not be included in determining whether the file has been changed
 // 		- If dest doesn't end with a slash, the filepath is inferred to be <dest>/<filename>
 // 	2. If <src> is a local tar archive:
 // 		-If <src> is a local tar archive, it is unpacked at the dest, as 'tar -x' would
